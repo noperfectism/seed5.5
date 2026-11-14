@@ -149,6 +149,16 @@
     <div class="hint" id="keyStatus">Key 只存在这台手机上，只发给 openrouter.ai。建议在 OpenRouter 后台给 Key 设个消费上限。</div>
   </div>
 
+  <!-- 中转 -->
+  <div class="card">
+    <h2>🛰️ 中转站（离开网页也能出图）</h2>
+    <div class="seedrow">
+      <input id="relayUrl" type="url" placeholder="https://seedream-relay.xxx.workers.dev（留空=直连）" autocomplete="off">
+      <button class="small" id="relayTest">测试</button>
+    </div>
+    <div class="hint" id="relayStatus">填了中转地址后，任务交给中转站去等，你可以随时离开，回来自动取图；不填就是原来的直连方式。</div>
+  </div>
+
   <!-- 存储 -->
   <div class="card">
     <h2>💾 存储</h2>
@@ -166,8 +176,8 @@
     <h2>ℹ️ 关于扣费和中断</h2>
     <div class="hint" style="margin-top:0">
       · 没返回图就不扣钱。<br>
-      · 出图期间网页会尽量保持屏幕常亮。切走 App 或锁屏，连接会被系统掐断；切回来后会自动重发（已出的图都在本机，不会丢）。<br>
-      · 极少数情况下，被掐断的那次其实已经出图，重发会多扣一次。
+      · <b>用了中转站</b>：发出去就可以离开，中转站替你等，图在中转站保留 2 天，回到网页自动取回，不会重发、不会重复扣费。<br>
+      · <b>直连</b>：切走 App 或锁屏，连接会被系统掐断；切回来后会自动重发，极少数情况下会多扣一次。
     </div>
   </div>
 </main>
@@ -332,6 +342,23 @@ $('keyCheck').onclick = async () => {
   } catch (e) { $('keyStatus').textContent = '❌ 检查失败：' + e.message + '（Key 已保存，可直接试生成）'; }
 };
 
+/* ---- 中转站 ---- */
+const getRelay = () => (localStorage.getItem('sd2_relay') || '').trim().replace(/\/+$/, '');
+$('relayUrl').value = getRelay();
+$('relayUrl').addEventListener('change', e => { localStorage.setItem('sd2_relay', e.target.value.trim().replace(/\/+$/, '')); relayInfo(); });
+function relayInfo(){ if (getRelay()) $('relayStatus').textContent = '已启用中转：发出去就可以离开，回来自动取图。'; }
+$('relayTest').onclick = async () => {
+  const u = $('relayUrl').value.trim().replace(/\/+$/, '');
+  localStorage.setItem('sd2_relay', u);
+  if (!u) { $('relayStatus').textContent = '已关闭中转，改回直连。'; return; }
+  $('relayStatus').textContent = '测试中…';
+  try {
+    const j = await (await fetch(u + '/')).json();
+    $('relayStatus').textContent = j.ok ? '✅ 中转站连通，已启用。发出去就可以离开，回来自动取图。' : '❌ 地址能打开，但不是中转站';
+  } catch (e) { $('relayStatus').textContent = '❌ 连不上：' + e.message + '（检查地址是不是 https://….workers.dev）'; }
+};
+relayInfo();
+
 /* ---- 存储 ---- */
 async function storageInfo(){
   try {
@@ -443,9 +470,11 @@ async function pump(){
   try {
     do {
       pump.again = false;
-      const queued = (await dbAll('tasks')).filter(t => t.status === 'queued').sort((a, b) => a.created - b.created);
+      // queued = 待发出；submitted = 已交给中转站，只需去取结果（不限并发、不会重发）
+      const queued = (await dbAll('tasks')).filter(t => t.status === 'queued' || t.status === 'submitted').sort((a, b) => a.created - b.created);
       for (const t of queued){
-        if (active.size >= MAX_PARALLEL) break;
+        if (t.status === 'queued' && active.size >= MAX_PARALLEL) continue;
+        if (t.status === 'submitted' && document.hidden) continue;
         if (active.has(t.id)) continue;
         runTask(t);                         // 不 await：全部同时发出
       }
@@ -454,23 +483,57 @@ async function pump(){
   renderTasks(); renderGallery(); updateWake();
 }
 
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+// 带超时的 fetch；rec.ctrl 也能从外面中止
+async function fetchT(url, opts, ms, rec){
+  const timer = setTimeout(() => { rec.reason = rec.reason || '等待超时'; rec.ctrl.abort(); }, ms);
+  try { return await fetch(url, { ...opts, signal: rec.ctrl.signal }); }
+  finally { clearTimeout(timer); }
+}
+const RELAY_GIVEUP = 20 * 60 * 1000;   // 中转任务 20 分钟还没结果就判失败
+
 async function runTask(t){
-  const rec = { ctrl: new AbortController(), start: Date.now(), hidden: document.hidden, reason: '', task: t };
+  const rec = { ctrl: new AbortController(), start: t.submittedAt || Date.now(), hidden: document.hidden, reason: '', task: t, relay: false, parked: false };
   active.set(t.id, rec);
-  t.status = 'running'; t.attempts = (t.attempts || 0) + 1; t.error = '';
+  if (t.status !== 'submitted'){ t.status = 'running'; t.attempts = (t.attempts || 0) + 1; }
+  t.error = '';
   await dbPut('tasks', t);
+  renderGallery();
   let ok = false;
   try {
-    const body = await buildBody(t);
-    const timer = setTimeout(() => { rec.reason = '等待超时'; rec.ctrl.abort(); }, REQ_TIMEOUT);
     let resp, text;
-    try {
-      resp = await fetch(API, { method: 'POST', signal: rec.ctrl.signal,
+    const relay = t.jobId ? (t.relay || getRelay()) : getRelay();
+    if (relay){
+      rec.relay = true;
+      /* ---------- 中转模式：提交一次，之后只轮询取结果 ---------- */
+      if (!t.jobId){
+        const bodyStr = JSON.stringify(await buildBody(t));
+        if (bodyStr.length > 24e6) throw new ApiError('参考图太大了（超过 24MB），少选几张再试', 0);
+        const r = await fetchT(relay + '/jobs', { method: 'POST',
+          headers: { 'Authorization': 'Bearer ' + getKey(), 'Content-Type': 'application/json' }, body: bodyStr }, 90000, rec);
+        const j = await r.json().catch(() => ({}));
+        if (!r.ok || !j.id) throw new ApiError(j?.error?.message || ('中转站提交失败 HTTP ' + r.status), r.status);
+        t.jobId = j.id; t.relay = relay; t.status = 'submitted'; t.submittedAt = rec.start = Date.now();
+        await dbPut('tasks', t);
+      }
+      for (;;){
+        if (document.hidden){ rec.parked = true; return; }          // 切走了：先停，回来接着取
+        if (Date.now() - t.submittedAt > RELAY_GIVEUP) throw new ApiError('中转站 20 分钟没出结果，判定失败', 0);
+        let r;
+        try { r = await fetchT(t.relay + '/jobs/' + t.jobId, {}, 30000, rec); }
+        catch { if (rec.reason === 'stop') { rec.parked = true; return; } rec.ctrl = new AbortController(); rec.reason = ''; await sleep(3000); continue; }
+        if (r.status === 202){ await sleep(3000); continue; }
+        resp = r; text = await r.text(); break;
+      }
+    } else {
+      /* ---------- 直连模式 ---------- */
+      const body = await buildBody(t);
+      resp = await fetchT(API, { method: 'POST',
         headers: { 'Authorization': 'Bearer ' + getKey(), 'Content-Type': 'application/json',
                    'HTTP-Referer': location.origin + location.pathname, 'X-Title': 'Seedream Studio' },
-        body: JSON.stringify(body) });
+        body: JSON.stringify(body) }, REQ_TIMEOUT, rec);
       text = await resp.text();
-    } finally { clearTimeout(timer); }
+    }
     let json = null; try { json = JSON.parse(text); } catch {}
     if (!resp.ok || json?.error) throw new ApiError(json?.error?.message || (text || '').slice(0, 300) || ('HTTP ' + resp.status), resp.status);
     const items = json?.data || [];
@@ -489,7 +552,10 @@ async function runTask(t){
     await dbDel('tasks', t.id); ok = true;
   } catch (e) {
     const cur = await dbGet('tasks', t.id);
-    if (cur){
+    if (cur && cur.jobId && !(e instanceof ApiError)){
+      rec.parked = true;                       // 已交给中转站：网络抖动不算失败，稍后继续取
+    } else if (cur){
+      if (cur.jobId){ delete cur.jobId; delete cur.relay; delete cur.submittedAt; }   // 失败后重发要重新提交
       if (e instanceof ApiError){
         cur.status = 'failed';
         cur.error = (e.status === 429 || e.status >= 500) ? `${e.message}（服务端繁忙，可重发）` : e.message;
@@ -503,8 +569,10 @@ async function runTask(t){
   } finally {
     active.delete(t.id);
     if (ok && 'vibrate' in navigator) try { navigator.vibrate(30); } catch {}
-    if (!document.hidden) await requeueInterrupted();
-    pump();
+    if (!document.hidden){
+      await requeueInterrupted();
+      if (rec.parked && !ok) setTimeout(pump, 3000); else pump();
+    } else renderGallery();
   }
 }
 
@@ -542,7 +610,8 @@ function onHide(){ hiddenAt = Date.now(); for (const r of active.values()) r.hid
 async function onShow(){
   const away = hiddenAt ? Date.now() - hiddenAt : 0; hiddenAt = 0;
   for (const r of active.values())
-    if (away > 10000 && Date.now() - r.start > STALE_MS){ r.reason = '切后台太久，连接已丢，自动重发'; r.ctrl.abort(); }
+    if (!r.relay && away > 10000 && Date.now() - r.start > STALE_MS){ r.reason = '切后台太久，连接已丢，自动重发'; r.ctrl.abort(); }
+    else if (r.relay && r.hidden){ r.hidden = false; r.ctrl.abort(); }   // 中转任务：丢掉挂起的查询，立刻重新去取
   await requeueInterrupted(); pump();
 }
 document.addEventListener('visibilitychange', () => document.hidden ? onHide() : onShow());

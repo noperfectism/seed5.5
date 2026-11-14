@@ -669,9 +669,13 @@ async function runTask(t){
         if (Date.now() - t.submittedAt > RELAY_GIVEUP) throw new ApiError('超过 2 天没取回，中转站上的结果已过期', 0);
         let r;
         try { r = await fetchT(t.relay + '/jobs/' + t.jobId, {}, 30000, rec); }
-        catch (err) { rec.polls++; rec.state = '连不上中转站，稍后再试';
+        catch (err) { rec.polls++; rec.state = '连不上中转站（' + (err.message || err) + '），稍后再试'; rec.lastErr = String(err.message || err);
                       rec.ctrl = new AbortController(); rec.reason = ''; await sleep(3000); continue; }
         rec.polls++;
+        if (r.status >= 500 && r.status !== 502){
+          const j = await r.json().catch(() => ({}));
+          rec.state = '中转站出错：' + (j?.error?.message || ('HTTP ' + r.status)).slice(0, 120); await sleep(5000); continue;
+        }
         if (r.status === 202){
           const j = await r.json().catch(() => ({}));
           rec.state = ({ queued:'中转站排队中', running:'正在出图', complete:'已出图，准备取回', syncing:'已出图，等待同步', waiting:'中转站等待中' })[j.state] || ('中转站：' + (j.state || '未知'));
@@ -832,6 +836,7 @@ async function showTaskInfo(id){
     '已等：' + Math.round((Date.now() - (t.submittedAt || t.created)) / 1000) + ' 秒',
     '已查询：' + ((rec && rec.polls) || 0) + ' 次',
   ];
+  if (rec && rec.lastErr) lines.push('最近一次错误：' + rec.lastErr);
   if (t.jobId) window.prompt(lines.join('\n') + '\n\n查询链接（可复制到浏览器打开）：', t.relay + '/jobs/' + t.jobId);
   else alert(lines.join('\n'));
 }
@@ -954,7 +959,7 @@ $('zipAll').onclick = async () => {
    每次打开 / 切回来时，跳过缓存去拿一次最新的 index.html，版本号不同就自动刷新；
    正在显影时先不刷，空闲了再刷。
    ★ 以后每次改代码，都把下面的版本号改一下。 */
-const APP_VERSION = '2026-11-14-e';
+const APP_VERSION = '2026-11-14-f';
 let updateReady = false, lastCheck = 0;
 async function checkUpdate(force){
   if (!force && Date.now() - lastCheck < 60000) return;

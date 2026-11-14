@@ -3,196 +3,296 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#0f1115">
+<meta name="theme-color" content="#1C1814">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<title>种梦 Seedream</title>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="显影">
+<title>显影</title>
 <style>
-  :root{--bg:#0f1115;--card:#181b22;--line:#2a2f3a;--text:#e8eaf0;--sub:#9aa3b2;--accent:#6c8cff;--ok:#3ecf8e;--warn:#f5a524;--err:#ff5c7a}
-  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-  body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 -apple-system,BlinkMacSystemFont,"PingFang SC","Helvetica Neue",sans-serif;padding:env(safe-area-inset-top) 0 calc(env(safe-area-inset-bottom) + 24px)}
-  main{max-width:760px;margin:0 auto;padding:12px}
-  header{display:flex;align-items:baseline;gap:8px;margin:8px 4px 12px}
-  header h1{font-size:22px;margin:0}
-  header .tag{font-size:11px;letter-spacing:1px;color:var(--accent);border:1px solid var(--accent);border-radius:6px;padding:0 6px}
-  header .cost{margin-left:auto;font-size:13px;color:var(--sub)}
-  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px}
-  .card h2{font-size:15px;margin:0 0 10px;display:flex;align-items:center;gap:8px}
-  .card h2 .grow{flex:1}
-  label{display:block;font-size:12px;color:var(--sub);margin:0 0 4px}
-  input,select,textarea{width:100%;background:#0c0e12;color:var(--text);border:1px solid var(--line);border-radius:10px;padding:10px;font-size:16px;font-family:inherit}
-  textarea{min-height:130px;resize:vertical}
-  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-  .grid2>div{min-width:0}
-  .hint{font-size:12px;color:var(--sub);margin-top:6px}
-  button{background:#232835;color:var(--text);border:1px solid var(--line);border-radius:10px;padding:10px 14px;font-size:15px;font-family:inherit}
-  button.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
-  button.danger{color:var(--err)}
-  button.small{padding:6px 10px;font-size:13px}
-  button:disabled{opacity:.5}
-  .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-  .big{width:100%;padding:14px;font-size:17px;margin-top:12px}
-  .seedrow{display:flex;gap:6px}
-  .seedrow input{flex:1;min-width:0}
-  .refs{display:grid;grid-template-columns:repeat(auto-fill,minmax(78px,1fr));gap:8px}
-  .ref{position:relative;aspect-ratio:1;border-radius:10px;overflow:hidden;border:2px solid transparent;background:#0c0e12}
-  .ref img{width:100%;height:100%;object-fit:cover;display:block}
-  .ref.sel{border-color:var(--accent)}
-  .ref:not(.sel) img{opacity:.45}
-  .ref .badge{position:absolute;left:4px;top:4px;background:var(--accent);color:#fff;font-size:12px;font-weight:700;border-radius:8px;padding:0 6px}
-  .ref .del{position:absolute;right:2px;top:2px;width:24px;height:24px;border-radius:12px;background:rgba(0,0,0,.65);border:none;color:#fff;padding:0;font-size:14px;line-height:24px}
-  .ref.add{display:flex;align-items:center;justify-content:center;border:2px dashed var(--line);color:var(--sub);font-size:28px}
-  .tasks .t{display:flex;gap:8px;align-items:center;padding:8px 0;border-top:1px solid var(--line);font-size:13px}
-  .tasks .t:first-child{border-top:none}
-  .tasks .t .msg{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis}
-  .dot{width:8px;height:8px;border-radius:4px;flex:none}
-  .s-interrupted .dot{background:var(--warn)} .s-failed .dot{background:var(--err)}
-  .gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:6px}
-  .gallery img,.gallery .ph{width:100%;aspect-ratio:9/16;object-fit:cover;border-radius:8px;display:block;background:#0c0e12}
-  .gallery .ph{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;color:var(--sub);font-size:12px;border:1px dashed var(--line);
-    background:linear-gradient(110deg,#12151b 30%,#1d2230 50%,#12151b 70%);background-size:300% 100%;animation:shim 1.6s linear infinite}
-  .gallery .ph b{color:var(--text);font-size:15px}
-  @keyframes shim{to{background-position:-150% 0}}
-  .viewer{position:fixed;inset:0;background:rgba(0,0,0,.95);z-index:50;display:none;flex-direction:column;padding:env(safe-area-inset-top) 10px calc(env(safe-area-inset-bottom) + 10px)}
-  .viewer.show{display:flex}
-  .viewer .imgwrap{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;padding:10px 0}
-  .viewer img{max-width:100%;max-height:100%;object-fit:contain;-webkit-touch-callout:default}
-  .viewer .meta{font-size:12px;color:var(--sub);max-height:20vh;overflow:auto;white-space:pre-wrap;margin-bottom:8px}
-  .viewer .acts{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
-  .viewer .acts button{padding:9px 4px;font-size:13px}
-  .toast{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom) + 24px);transform:translateX(-50%);background:#2b3140;color:#fff;padding:10px 16px;border-radius:12px;font-size:14px;z-index:99;opacity:0;transition:opacity .2s;pointer-events:none;max-width:90vw}
-  .toast.show{opacity:1}
-  .pill{font-size:12px;color:var(--sub);font-weight:400}
-  .switch{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text)}
-  .switch input{width:auto}
+/* ──────────────────────────────────────────────
+   显影 · 暗房
+   暗房 #1C1814   显影盘 #261F19   相纸 #EFE8DA
+   银盐 #9A8F7E   安全灯 #E59A3C   停显 #D25A43
+   ────────────────────────────────────────────── */
+:root{
+  --room:#1C1814; --tray:#261F19; --tray2:#2F271F; --rule:#3A3027;
+  --paper:#EFE8DA; --silver:#9A8F7E; --lamp:#E59A3C; --lamp-dim:rgba(229,154,60,.14); --stop:#D25A43;
+  --serif:"Songti SC","STSong","Noto Serif SC","Source Han Serif SC",serif;
+  --sans:-apple-system,BlinkMacSystemFont,"PingFang SC","Helvetica Neue",sans-serif;
+  --edge:"Avenir Next Condensed","DIN Condensed","Roboto Condensed","Arial Narrow",sans-serif;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html{background:var(--room)}
+body{margin:0;color:var(--paper);font:15px/1.6 var(--sans);
+  background:radial-gradient(120% 60% at 50% -10%, rgba(229,154,60,.10), transparent 60%), var(--room);
+  min-height:100vh;padding:env(safe-area-inset-top) 0 calc(env(safe-area-inset-bottom) + 108px)}
+main{max-width:720px;margin:0 auto;padding:0 18px}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--lamp);outline-offset:2px}
+
+/* ── 刊头 ── */
+.mast{display:flex;align-items:flex-end;justify-content:space-between;padding:28px 0 22px}
+.mast h1{margin:0;font:900 56px/0.9 var(--serif);letter-spacing:.06em;color:var(--paper)}
+.mast h1 span{display:block;font:500 13px/1 var(--sans);letter-spacing:.04em;color:var(--silver);margin-top:12px}
+.ledger{text-align:right;background:none;border:0;padding:0;cursor:pointer}
+.ledger b{display:block;font:600 22px/1 var(--edge);color:var(--lamp);letter-spacing:.02em}
+.ledger small{font-size:12px;color:var(--silver)}
+
+/* ── 通用区块 ── */
+section{padding:22px 0;border-top:1px solid var(--rule)}
+.head{display:flex;align-items:baseline;gap:10px;margin-bottom:14px}
+.head h2{margin:0;font:700 19px/1.2 var(--serif);letter-spacing:.04em}
+.head .meta{color:var(--silver);font-size:13px}
+.head .push{margin-left:auto}
+.quiet{background:none;border:0;color:var(--silver);font-size:14px;padding:6px 2px;cursor:pointer}
+.quiet:active{color:var(--paper)}
+.note{color:var(--silver);font-size:13px;line-height:1.7;margin:10px 0 0}
+
+/* ── 画面描述（主角） ── */
+.script textarea{width:100%;min-height:150px;resize:none;background:transparent;border:0;padding:0;
+  font:400 21px/1.75 var(--serif);color:var(--paper);caret-color:var(--lamp)}
+.script textarea::placeholder{color:#6F6556}
+.script textarea:focus{outline:none}
+.script .line{height:1px;background:linear-gradient(90deg,var(--lamp),transparent 70%);opacity:.5;margin-top:8px}
+
+/* ── 参考底片 ── */
+.strip{display:flex;gap:10px;overflow-x:auto;padding:4px 2px 10px;margin:0 -2px;scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch}
+.neg{position:relative;flex:none;width:76px;height:104px;border-radius:3px;overflow:hidden;scroll-snap-align:start;
+  background:var(--tray);border:0;padding:0;cursor:pointer}
+.neg img{width:100%;height:100%;object-fit:cover;display:block;filter:grayscale(.85) brightness(.55);transition:filter .25s}
+.neg.on img{filter:none}
+.neg.on{box-shadow:0 0 0 2px var(--lamp)}
+.neg .no{position:absolute;left:0;bottom:0;right:0;padding:14px 6px 4px;font:600 13px/1 var(--edge);color:var(--lamp);
+  background:linear-gradient(transparent,rgba(0,0,0,.7));text-align:left}
+.neg .x{position:absolute;top:3px;right:3px;width:22px;height:22px;border-radius:11px;border:0;background:rgba(20,16,12,.7);color:var(--paper);
+  font-size:13px;line-height:22px;padding:0}
+.neg.add{display:flex;align-items:center;justify-content:center;flex-direction:column;gap:2px;border:1px dashed #5A4D3F;background:transparent;color:var(--silver);font-size:12px}
+.neg.add b{font:300 30px/1 var(--sans);color:var(--paper)}
+
+/* ── 配方（参数） ── */
+.recipe .row{display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid rgba(58,48,39,.6)}
+.recipe .row:last-of-type{border-bottom:0}
+.recipe .k{flex:none;width:58px;color:var(--silver);font-size:14px}
+.recipe .v{flex:1;min-width:0;display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.sel{appearance:none;-webkit-appearance:none;background:transparent;border:0;text-align:right;text-align-last:right;font-size:16px;color:var(--paper);
+  padding:4px 18px 4px 0;max-width:100%;background-image:linear-gradient(45deg,transparent 50%,var(--silver) 50%),linear-gradient(135deg,var(--silver) 50%,transparent 50%);
+  background-position:right 6px center,right 1px center;background-size:5px 5px;background-repeat:no-repeat;cursor:pointer}
+.sel option{background:var(--tray);color:var(--paper)}
+.chip{border:1px solid var(--rule);background:transparent;color:var(--paper);border-radius:999px;padding:5px 12px;font-size:14px;line-height:1.3;cursor:pointer}
+.chip.on{background:var(--lamp);border-color:var(--lamp);color:#22180D;font-weight:600}
+.chip:disabled{opacity:.3}
+.seed{display:flex;gap:6px;align-items:center;justify-content:flex-end;width:100%}
+.seed input{flex:1;min-width:0;background:transparent;border:0;border-bottom:1px solid var(--rule);text-align:right;font:500 17px/1.4 var(--edge);
+  padding:4px 0;color:var(--paper);letter-spacing:.03em}
+.seed input::placeholder{font:14px var(--sans);color:#6F6556}
+.seed input:focus{outline:none;border-color:var(--lamp)}
+
+/* ── 没出来的任务 ── */
+.fails .f{display:flex;gap:10px;align-items:flex-start;padding:10px 0;border-bottom:1px solid rgba(58,48,39,.6);font-size:14px}
+.fails .f p{flex:1;margin:0;min-width:0;word-break:break-word}
+.fails .f p b{color:var(--stop);font-weight:600;margin-right:6px}
+.fails .f p.wait b{color:var(--lamp)}
+
+/* ── 印样（图库） ── */
+.sheet .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px 10px}
+@media (min-width:560px){.sheet .grid{grid-template-columns:repeat(4,1fr)}}
+.frame{position:relative;cursor:pointer}
+.frame .pic{display:block;width:100%;aspect-ratio:9/16;object-fit:cover;border-radius:2px;background:var(--tray)}
+.frame .edge{display:flex;justify-content:space-between;margin-top:5px;font:600 12px/1 var(--edge);color:var(--lamp);opacity:.8;letter-spacing:.04em}
+.frame .edge i{font-style:normal;color:var(--silver);font-weight:500}
+.frame.fresh .pic{animation:develop 1.8s ease-out both}
+@keyframes develop{
+  0%{filter:sepia(1) saturate(2.4) hue-rotate(-12deg) brightness(.18) contrast(.6) blur(6px)}
+  45%{filter:sepia(.7) saturate(1.6) hue-rotate(-6deg) brightness(.55) contrast(.85) blur(2px)}
+  100%{filter:none}
+}
+.tray{width:100%;aspect-ratio:9/16;border-radius:2px;position:relative;overflow:hidden;
+  background:radial-gradient(80% 50% at 50% 55%, rgba(229,154,60,.28), transparent 70%), var(--tray);
+  display:flex;flex-direction:column;justify-content:flex-end;padding:8px;animation:lamp 3.2s ease-in-out infinite}
+@keyframes lamp{50%{background-color:var(--tray2)}}
+.tray b{font:600 20px/1 var(--edge);color:var(--lamp)}
+.tray span{font-size:11px;line-height:1.4;color:var(--silver);margin-top:4px}
+.empty{color:var(--silver);font:16px/1.8 var(--serif);padding:20px 0 6px}
+.btn{border:1px solid var(--rule);background:transparent;color:var(--paper);border-radius:999px;padding:8px 16px;font-size:14px;cursor:pointer}
+.btn.lamp{border-color:var(--lamp);color:var(--lamp)}
+.btn.stop{color:var(--stop)}
+.btn:disabled{opacity:.4}
+
+/* ── 暗房设置 ── */
+details.setup{border-top:1px solid var(--rule);padding:18px 0}
+details.setup summary{list-style:none;cursor:pointer;display:flex;align-items:baseline;gap:10px}
+details.setup summary::-webkit-details-marker{display:none}
+details.setup summary h2{margin:0;font:700 19px/1.2 var(--serif);letter-spacing:.04em}
+details.setup summary span{color:var(--silver);font-size:13px}
+details.setup summary::after{content:"+";margin-left:auto;color:var(--silver);font-size:22px;line-height:1}
+details.setup[open] summary::after{content:"−"}
+.field{margin-top:18px}
+.field label{display:block;font-size:14px;color:var(--paper);margin-bottom:6px}
+.field .in{display:flex;gap:8px;align-items:center}
+.field input[type=password],.field input[type=text],.field input[type=url]{flex:1;min-width:0;background:var(--tray);border:1px solid var(--rule);border-radius:8px;
+  padding:10px 12px;font-size:16px;color:var(--paper)}
+.field input:focus{outline:none;border-color:var(--lamp)}
+.field .acts{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.toggle{display:flex;gap:10px;align-items:center;font-size:14px;margin-top:14px}
+.toggle input{accent-color:var(--lamp);width:18px;height:18px}
+
+/* ── 底部操作条 ── */
+.dock{position:fixed;left:0;right:0;bottom:0;z-index:20;padding:12px 18px calc(env(safe-area-inset-bottom) + 12px);
+  background:linear-gradient(to top, var(--room) 60%, rgba(28,24,20,0));}
+.dock .inner{max-width:720px;margin:0 auto;display:flex;align-items:center;gap:12px}
+#go{flex:1;border:0;border-radius:14px;background:var(--lamp);color:#22180D;padding:15px 18px;display:flex;align-items:baseline;justify-content:center;gap:10px;cursor:pointer;
+  box-shadow:0 8px 30px rgba(229,154,60,.25)}
+#go b{font:800 20px/1 var(--serif);letter-spacing:.12em}
+#go small{font:600 14px/1 var(--edge);opacity:.75}
+#go:active{transform:scale(.985)}
+.dock .busy{font:600 14px/1.2 var(--edge);color:var(--lamp);min-width:0;text-align:center}
+.dock .busy:empty{display:none}
+
+/* ── 放大看 ── */
+.viewer{position:fixed;inset:0;z-index:50;background:#120F0C;display:none;flex-direction:column;
+  padding:calc(env(safe-area-inset-top) + 10px) 16px calc(env(safe-area-inset-bottom) + 12px)}
+.viewer.show{display:flex}
+.viewer .stage{flex:1;min-height:0;display:flex;align-items:center;justify-content:center}
+.viewer .stage img{max-width:100%;max-height:100%;object-fit:contain;background:var(--paper);padding:6px;border-radius:1px;
+  box-shadow:0 20px 60px rgba(0,0,0,.6);-webkit-touch-callout:default}
+.viewer .cap{margin:14px 0 10px;max-height:22vh;overflow:auto}
+.viewer .cap p{margin:0;font:16px/1.7 var(--serif);color:var(--paper)}
+.viewer .cap dl{display:flex;flex-wrap:wrap;gap:4px 16px;margin:8px 0 0;font-size:12px;color:var(--silver)}
+.viewer .cap dt{display:none}
+.viewer .cap dd{margin:0}
+.viewer .cap dd b{font:600 13px var(--edge);color:var(--lamp);letter-spacing:.03em}
+.viewer .acts{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.viewer .acts button{background:var(--tray);border:1px solid var(--rule);border-radius:10px;color:var(--paper);padding:10px 2px;font-size:13px;cursor:pointer}
+.viewer .acts .primary{background:var(--lamp);border-color:var(--lamp);color:#22180D;font-weight:600}
+.viewer .acts .stop{color:var(--stop)}
+
+.toast{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom) + 92px);transform:translateX(-50%);z-index:60;
+  background:var(--paper);color:#22180D;padding:10px 16px;border-radius:10px;font-size:14px;opacity:0;transition:opacity .2s;pointer-events:none;max-width:88vw;text-align:center}
+.toast.show{opacity:1}
+
+@media (prefers-reduced-motion:reduce){
+  .frame.fresh .pic,.tray{animation:none}
+  .neg img{transition:none}
+}
 </style>
 </head>
 <body>
 <main>
-  <header>
-    <h1>种梦</h1><span class="tag" id="modelTag">SEEDREAM 5.5</span>
-    <span class="cost" id="totalCost" title="累计花费">$0.000</span>
+  <header class="mast">
+    <h1>显影<span>说出画面，让它在这里显出来</span></h1>
+    <button class="ledger" id="ledger" title="点一下可以清零">
+      <b id="totalCost">$0.000</b><small>累计花费</small>
+    </button>
   </header>
 
-  <!-- 提示词 -->
-  <div class="card">
-    <h2><span class="grow">✍️ 提示词 <span class="pill" id="promptLen">0 字</span></span>
-      <button class="small" id="promptClear">清空</button>
-    </h2>
-    <textarea id="prompt" placeholder="描述你想要的画面…"></textarea>
-  </div>
+  <!-- 画面 -->
+  <section class="script" style="border-top:0;padding-top:4px">
+    <div class="head">
+      <h2>画面</h2><span class="meta" id="promptLen">0 字</span>
+      <button class="quiet push" id="promptClear">清空</button>
+    </div>
+    <textarea id="prompt" placeholder="写下你想要的画面：雨后的老街，霓虹倒映在积水里，一个撑黑伞的人正走远……"></textarea>
+    <div class="line"></div>
+  </section>
 
-  <!-- 参考图 -->
-  <div class="card">
-    <h2><span class="grow">🖼️ 参考图 <span class="pill" id="refCount"></span></span>
-      <button class="small" id="refNone">全不选</button>
-    </h2>
-    <div class="refs" id="refs"></div>
+  <!-- 参考底片 -->
+  <section>
+    <div class="head">
+      <h2>参考图</h2><span class="meta" id="refCount"></span>
+      <button class="quiet push" id="refAll">全选</button>
+    </div>
+    <div class="strip" id="refs"></div>
     <input id="refFile" type="file" accept="image/*" multiple hidden>
-    <div class="hint">参考图一直保存在本机。点图片 = 选中/取消，角标就是提示词里的“图1、图2…”。</div>
-  </div>
+    <p class="note">参考图会一直存在这台手机上。点一下选中或取消，左下角的编号对应提示词里的“图1、图2”。</p>
+  </section>
 
-  <!-- 参数 -->
-  <div class="card">
-    <div class="grid2">
-      <div><label>模型</label><select id="model"></select></div>
-      <div><label>比例</label><select id="aspect"></select></div>
-      <div><label>分辨率</label><select id="resolution"></select></div>
-      <div><label>张数（同时出）</label>
-        <select id="count"><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>8</option><option>10</option></select></div>
-      <div><label>格式</label><select id="format"></select></div>
-      <div><label>背景</label>
-        <select id="background"><option value="auto">自动</option><option value="opaque">不透明</option><option value="transparent">透明（PNG）</option></select></div>
+  <!-- 配方 -->
+  <section class="recipe">
+    <div class="head"><h2>配方</h2></div>
+    <div class="row"><span class="k">模型</span><div class="v"><select class="sel" id="model"></select></div></div>
+    <div class="row"><span class="k">比例</span><div class="v"><select class="sel" id="aspect"></select></div></div>
+    <div class="row"><span class="k">分辨率</span><div class="v" id="resolution"></div></div>
+    <div class="row"><span class="k">张数</span><div class="v" id="count"></div></div>
+    <div class="row"><span class="k">格式</span><div class="v" id="format"></div></div>
+    <div class="row"><span class="k">背景</span><div class="v" id="background"></div></div>
+    <div class="row"><span class="k">Seed</span>
+      <div class="v"><div class="seed">
+        <input id="seed" type="number" inputmode="numeric" placeholder="每张随机">
+        <button class="chip" id="seedNew">换一个</button>
+        <button class="chip" id="seedClear">随机</button>
+      </div></div>
     </div>
-    <div style="margin-top:10px">
-      <label>Seed</label>
-      <div class="seedrow">
-        <input id="seed" type="number" inputmode="numeric" placeholder="每张随机（会记录在结果里）">
-        <button class="small" id="seedNew">换一个</button>
-        <button class="small" id="seedClear">随机</button>
-      </div>
-      <div class="hint" id="seedHint"></div>
-    </div>
-    <div class="hint" id="modelHint"></div>
-    <button class="primary big" id="go">生成</button>
-  </div>
+  </section>
 
-  <!-- 失败 / 中断的任务 -->
-  <div class="card" id="taskCard" hidden>
-    <h2><span class="grow">⚠️ 没出来的任务</span>
-      <button class="small" id="retryAll">全部重发</button>
-      <button class="small danger" id="clearTasks">清除</button>
-    </h2>
-    <div class="tasks" id="tasks"></div>
-  </div>
+  <!-- 没出来的 -->
+  <section class="fails" id="taskCard" hidden>
+    <div class="head">
+      <h2>没出来的</h2>
+      <button class="quiet push" id="retryAll">全部重新显影</button>
+      <button class="quiet" id="clearTasks">清除</button>
+    </div>
+    <div id="tasks"></div>
+  </section>
 
-  <!-- 出过的图 -->
-  <div class="card">
-    <h2><span class="grow">📁 出过的图 <span class="pill" id="galCount"></span></span></h2>
-    <div class="row" style="margin-bottom:10px">
-      <button class="primary" id="zipAll">⬇️ 一键打包下载全部</button>
+  <!-- 印样 -->
+  <section class="sheet">
+    <div class="head">
+      <h2>印样</h2><span class="meta" id="galCount"></span>
+      <button class="btn lamp push" id="zipAll">全部打包下载</button>
     </div>
-    <div class="gallery" id="gallery"></div>
-    <div class="hint" id="galEmpty">出过的图都保存在这台手机上。点开可以存到相册、当参考图、用同样参数再来。</div>
-  </div>
+    <div class="grid" id="gallery"></div>
+    <p class="empty" id="galEmpty">还没有照片。写下画面，点“显影”。</p>
+  </section>
 
-  <!-- API Key -->
-  <div class="card">
-    <h2>🔑 OPENROUTER API KEY</h2>
-    <div class="seedrow">
-      <input id="apiKey" type="password" placeholder="sk-or-v1-..." autocomplete="off">
-      <button class="small" id="keyShow">显示</button>
-    </div>
-    <div class="row" style="margin-top:8px">
-      <button class="small primary" id="keyCheck">保存并检查</button>
-      <button class="small danger" id="keyDel">删除 Key</button>
-    </div>
-    <div class="hint" id="keyStatus">Key 只存在这台手机上，只发给 openrouter.ai。建议在 OpenRouter 后台给 Key 设个消费上限。</div>
-  </div>
+  <!-- 暗房设置 -->
+  <details class="setup" id="setup">
+    <summary><h2>暗房设置</h2><span id="setupSum">Key、中转站、存储</span></summary>
 
-  <!-- 中转 -->
-  <div class="card">
-    <h2>🛰️ 中转站（离开网页也能出图）</h2>
-    <div class="seedrow">
-      <input id="relayUrl" type="url" placeholder="https://seedream-relay.xxx.workers.dev（留空=直连）" autocomplete="off">
-      <button class="small" id="relayTest">测试</button>
+    <div class="field">
+      <label for="apiKey">OpenRouter API Key</label>
+      <div class="in"><input id="apiKey" type="password" placeholder="sk-or-v1-…" autocomplete="off"><button class="btn" id="keyShow">显示</button></div>
+      <div class="acts"><button class="btn lamp" id="keyCheck">保存并检查</button><button class="btn stop" id="keyDel">删除 Key</button></div>
+      <p class="note" id="keyStatus">Key 只存在这台手机上，只发给 openrouter.ai 或你自己的中转站。建议在 OpenRouter 后台给它设一个消费上限。</p>
     </div>
-    <div class="hint" id="relayStatus">填了中转地址后，任务交给中转站去等，你可以随时离开，回来自动取图；不填就是原来的直连方式。</div>
-  </div>
 
-  <!-- 存储 -->
-  <div class="card">
-    <h2>💾 存储</h2>
-    <div class="row">
-      <button class="small" id="persistBtn">防止被系统清理</button>
-      <button class="small danger" id="clearGal">清空全部历史</button>
+    <div class="field">
+      <label for="relayUrl">中转站</label>
+      <div class="in"><input id="relayUrl" type="url" placeholder="https://seedream-relay.xxx.workers.dev" autocomplete="off"><button class="btn" id="relayTest">测试</button></div>
+      <p class="note" id="relayStatus">填上后，图交给中转站去等，你可以离开，回来自动取回。留空就是直连。</p>
     </div>
-    <div class="row" style="margin-top:10px">
-      <label class="switch"><input type="checkbox" id="autoRetry" checked> 切回页面时自动重发被中断的任务</label>
-    </div>
-    <div class="hint" id="storageHint"></div>
-  </div>
 
-  <div class="card">
-    <h2>ℹ️ 关于扣费和中断</h2>
-    <div class="hint" style="margin-top:0">
-      · 没返回图就不扣钱。<br>
-      · <b>用了中转站</b>：发出去就可以离开，中转站替你等，图在中转站保留 2 天，回到网页自动取回，不会重发、不会重复扣费。<br>
-      · <b>直连</b>：切走 App 或锁屏，连接会被系统掐断；切回来后会自动重发，极少数情况下会多扣一次。
+    <div class="field">
+      <label>存储</label>
+      <div class="acts"><button class="btn" id="persistBtn">防止被系统清理</button><button class="btn stop" id="clearGal">清空全部印样</button></div>
+      <label class="toggle"><input type="checkbox" id="autoRetry" checked> 直连被打断时，回来自动重新显影</label>
+      <p class="note" id="storageHint"></p>
     </div>
-  </div>
+
+    <div class="field">
+      <label>扣费说明</label>
+      <p class="note" style="margin-top:0">没返回图就不扣钱。用中转站时，发出去就可以离开，图在中转站保留 2 天，回来自动取回，不会重复扣费。直连时切走或锁屏会断开，回来会自动重发，极少数情况下会多扣一次。</p>
+    </div>
+  </details>
 </main>
 
-<div class="viewer" id="viewer">
-  <div class="imgwrap"><img id="vImg" alt=""></div>
-  <div class="meta" id="vMeta"></div>
+<div class="dock">
+  <div class="inner">
+    <span class="busy" id="busy"></span>
+    <button id="go"><b>显影</b><small id="goEst"></small></button>
+  </div>
+</div>
+
+<div class="viewer" id="viewer" role="dialog" aria-label="查看照片">
+  <div class="stage"><img id="vImg" alt=""></div>
+  <div class="cap"><p id="vPrompt"></p><dl id="vMeta"></dl></div>
   <div class="acts">
-    <button id="vShare">存到相册</button>
+    <button class="primary" id="vShare">存到相册</button>
+    <button id="vAgain">再显影一张</button>
+    <button id="vUse">用这组配方</button>
     <button id="vRef">当参考图</button>
-    <button id="vUse">用这组参数</button>
     <button id="vLock">锁定 seed</button>
-    <button id="vAgain">再来</button>
     <button id="vCopy">复制提示词</button>
-    <button id="vDel" class="danger">删除</button>
+    <button class="stop" id="vDel">删除</button>
     <button id="vClose">关闭</button>
   </div>
 </div>
@@ -204,37 +304,42 @@
 
 /* ================== 配置 ================== */
 const API = 'https://openrouter.ai/api/v1/images';
-// 能力来自 OpenRouter /api/v1/images/models（2026-11）；价格为 OpenRouter 标价“起步价”，仅用于估算
+// 能力来自 OpenRouter /api/v1/images/models（2026-11）；价格为标价起步价，仅用于估算
 const MODELS = {
-  'bytedance-seed/seedream-5-5':       { label:'Seedream 5.5', tag:'SEEDREAM 5.5',       res:['1K','1.5K','2K'], fmt:['png','jpeg'], bg:true,  maxRefs:10, price:0.02,  refPrice:0.008 },
-  'bytedance-seed/seedream-5-0-pro':   { label:'Seedream 5.0 Pro',   tag:'SEEDREAM 5.0 PRO',   res:['1K','2K'],        fmt:['png','jpeg'], bg:true,  maxRefs:14, price:0.045, refPrice:0.003 },
-  'bytedance-seed/seedream-5-0-flash': { label:'Seedream 5.0 Flash', tag:'SEEDREAM 5.0 FLASH', res:['1K','2K'],        fmt:['png','jpeg'], bg:true,  maxRefs:14, price:0.018, refPrice:0 },
-  'bytedance-seed/seedream-5-0-lite':  { label:'Seedream 5.0 Lite',  tag:'SEEDREAM 5.0 LITE',  res:['2K','4K'],        fmt:['png','jpeg'], bg:false, maxRefs:14, price:0.035, refPrice:0 },
-  'bytedance-seed/seedream-4.5':       { label:'Seedream 4.5',       tag:'SEEDREAM 4.5',       res:['1K','2K','4K'],   fmt:null,           bg:false, maxRefs:14, price:0.04,  refPrice:0 },
+  'bytedance-seed/seedream-5-5':       { label:'Seedream 5.5',       res:['1K','1.5K','2K'], fmt:['png','jpeg'], bg:true,  maxRefs:10, price:0.02,  refPrice:0.008 },
+  'bytedance-seed/seedream-5-0-pro':   { label:'Seedream 5.0 Pro',   res:['1K','2K'],        fmt:['png','jpeg'], bg:true,  maxRefs:14, price:0.045, refPrice:0.003 },
+  'bytedance-seed/seedream-5-0-flash': { label:'Seedream 5.0 Flash', res:['1K','2K'],        fmt:['png','jpeg'], bg:true,  maxRefs:14, price:0.018, refPrice:0 },
+  'bytedance-seed/seedream-5-0-lite':  { label:'Seedream 5.0 Lite',  res:['2K','4K'],        fmt:['png','jpeg'], bg:false, maxRefs:14, price:0.035, refPrice:0 },
+  'bytedance-seed/seedream-4.5':       { label:'Seedream 4.5',       res:['1K','2K','4K'],   fmt:null,           bg:false, maxRefs:14, price:0.04,  refPrice:0 },
 };
 const RATIOS = [
   ['9:19.5','9:19.5 手机全面屏'],['9:20','9:20'],['9:21','9:21'],['9:16','9:16'],
-  ['1:2','1:2'],['2:3','2:3'],['3:4','3:4'],['4:5','4:5'],['1:1','1:1'],
+  ['1:2','1:2'],['2:3','2:3'],['3:4','3:4'],['4:5','4:5'],['1:1','1:1 方形'],
   ['5:4','5:4'],['4:3','4:3'],['3:2','3:2'],['2:1','2:1'],['16:9','16:9'],
-  ['19.5:9','19.5:9'],['20:9','20:9'],['21:9','21:9'],['auto','auto（模型决定）'],
+  ['19.5:9','19.5:9'],['20:9','20:9'],['21:9','21:9'],['auto','由模型决定'],
 ];
+const COUNTS = [1,2,3,4,6,8,10];
+const BGS = [['auto','自动'],['opaque','不透明'],['transparent','透明']];
 const DEFAULTS = { model:'bytedance-seed/seedream-5-5', aspect:'9:19.5', resolution:'2K', format:'png',
   background:'auto', seed:'', count:1, autoRetry:true, prompt:'' };
-const MAX_PARALLEL = 10;      // 张数上限，全部同时发出
-const REQ_TIMEOUT  = 240000;  // 单次请求最长等 4 分钟
-const STALE_MS     = 150000;  // 切回来时，已跑超过 2.5 分钟的请求视为丢了，自动重发
-const MAX_AUTO     = 4;       // 自动重发最多次数
+const MAX_PARALLEL = 10, REQ_TIMEOUT = 240000, STALE_MS = 150000, MAX_AUTO = 4;
+const RELAY_GIVEUP = 20 * 60 * 1000;
 
 /* ================== 小工具 ================== */
 const $ = id => document.getElementById(id);
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 const randSeed = () => Math.floor(Math.random() * 2147483647);
+const sleep = ms => new Promise(r => setTimeout(r, ms));
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 let toastTimer;
-function toast(msg, ms = 2200){ const t = $('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), ms); }
+function toast(msg, ms = 2200, onTap){
+  const t = $('toast'); t.textContent = msg; t.classList.add('show');
+  t.style.pointerEvents = onTap ? 'auto' : 'none'; t.onclick = onTap || null;
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => { t.classList.remove('show'); t.style.pointerEvents = 'none'; t.onclick = null; }, ms);
+}
 class ApiError extends Error { constructor(msg, status){ super(msg); this.status = status; } }
 const blobToDataURL = b => new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = () => rej(r.error); r.readAsDataURL(b); });
-async function b64ToBlob(b64, mime){ return (await fetch(`data:${mime};base64,${b64}`)).blob(); }
+const b64ToBlob = async (b64, mime) => (await fetch(`data:${mime};base64,${b64}`)).blob();
 const extOf = mime => /png/.test(mime) ? 'png' : /webp/.test(mime) ? 'webp' : 'jpg';
 function saveBlob(blob, name){
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name;
@@ -270,62 +375,60 @@ function fillSelect(el, items, value){
   el.value = items.some(([v]) => v === value) ? value : items[0][0];
   return el.value;
 }
+// 一组胶囊按钮（单选）
+function chips(el, items, value, onPick, disabled){
+  el.innerHTML = '';
+  for (const [v, t] of items){
+    const b = document.createElement('button'); b.className = 'chip' + (String(v) === String(value) ? ' on' : '');
+    b.textContent = t; b.disabled = !!disabled; b.onclick = () => onPick(v); el.appendChild(b);
+  }
+}
 function refreshParamUI(){
   if (!MODELS[S.model]) S.model = DEFAULTS.model;
   const m = MODELS[S.model];
   fillSelect($('model'), Object.entries(MODELS).map(([k, v]) => [k, v.label]), S.model);
   S.aspect = fillSelect($('aspect'), RATIOS, S.aspect);
-  const resPref = m.res.includes(S.resolution) ? S.resolution : (m.res.includes('2K') ? '2K' : m.res[m.res.length - 1]);
-  S.resolution = fillSelect($('resolution'), m.res.map(r => [r, r]), resPref);
-  if (m.fmt){ $('format').disabled = false; S.format = fillSelect($('format'), m.fmt.map(f => [f, f.toUpperCase()]), S.format); }
-  else { $('format').disabled = true; fillSelect($('format'), [['', '不支持']], ''); }
-  $('background').disabled = !m.bg; $('background').value = m.bg ? S.background : 'auto';
-  if (m.bg && S.background === 'transparent' && m.fmt){ S.format = 'png'; $('format').value = 'png'; $('format').disabled = true; }
-  if (![1,2,3,4,5,6,8,10].includes(+S.count)) S.count = 1;
-  $('count').value = String(S.count);
-  $('seed').value = S.seed;
-  $('seedHint').textContent = S.seed === '' ? '当前：每张随机' : `当前：锁定 ${S.seed}（每张都用这个）`;
+  if (!m.res.includes(S.resolution)) S.resolution = m.res.includes('2K') ? '2K' : m.res[m.res.length - 1];
+  chips($('resolution'), m.res.map(r => [r, r]), S.resolution, v => { S.resolution = v; refreshParamUI(); });
+  if (!COUNTS.includes(+S.count)) S.count = 1;
+  chips($('count'), COUNTS.map(n => [n, String(n)]), S.count, v => { S.count = v; refreshParamUI(); });
+  if (m.bg && S.background === 'transparent') S.format = 'png';
+  if (m.fmt) chips($('format'), m.fmt.map(f => [f, f.toUpperCase()]), S.format, v => { S.format = v; refreshParamUI(); }, m.bg && S.background === 'transparent');
+  else chips($('format'), [['', '不可选']], '', () => {}, true);
+  chips($('background'), BGS, m.bg ? S.background : 'auto', v => { S.background = v; refreshParamUI(); }, !m.bg);
+  if (document.activeElement !== $('seed')) $('seed').value = S.seed;
   $('autoRetry').checked = S.autoRetry;
-  $('modelTag').textContent = m.tag;
-  $('modelHint').textContent = `最多 ${m.maxRefs} 张参考图 · 分辨率 ${m.res.join(' / ')}${m.bg ? ' · 支持透明背景' : ''}`;
   saveS(); renderRefs(); updateEstimate();
 }
-$('model').onchange      = e => { S.model = e.target.value; refreshParamUI(); };
-$('aspect').onchange     = e => { S.aspect = e.target.value; saveS(); };
-$('resolution').onchange = e => { S.resolution = e.target.value; saveS(); };
-$('format').onchange     = e => { S.format = e.target.value; saveS(); };
-$('background').onchange = e => { S.background = e.target.value; refreshParamUI(); };
-$('count').onchange      = e => { S.count = parseInt(e.target.value) || 1; saveS(); updateEstimate(); };
-$('seed').oninput        = e => { S.seed = e.target.value.trim(); saveS(); $('seedHint').textContent = S.seed === '' ? '当前：每张随机' : `当前：锁定 ${S.seed}（每张都用这个）`; };
-$('seedNew').onclick     = () => { S.seed = String(randSeed()); refreshParamUI(); };
-$('seedClear').onclick   = () => { S.seed = ''; refreshParamUI(); };
-$('autoRetry').onchange  = e => { S.autoRetry = e.target.checked; saveS(); };
+$('model').onchange  = e => { S.model = e.target.value; refreshParamUI(); };
+$('aspect').onchange = e => { S.aspect = e.target.value; saveS(); };
+$('seed').oninput    = e => { S.seed = e.target.value.trim(); saveS(); };
+$('seedNew').onclick = () => { S.seed = String(randSeed()); $('seed').value = S.seed; saveS(); toast('已锁定新的 seed'); };
+$('seedClear').onclick = () => { S.seed = ''; $('seed').value = ''; saveS(); toast('改回每张随机'); };
+$('autoRetry').onchange = e => { S.autoRetry = e.target.checked; saveS(); };
 
-/* ---- 提示词：自动保存 + 字数 + 清空 ---- */
+/* ---- 画面描述 ---- */
 function setPrompt(v){ S.prompt = v; $('prompt').value = v; $('promptLen').textContent = `${v.length} 字`; saveS(); }
-$('prompt').oninput = e => setPrompt(e.target.value);
+$('prompt').oninput = e => { S.prompt = e.target.value; $('promptLen').textContent = `${S.prompt.length} 字`; saveS(); };
 $('promptClear').onclick = () => {
   if (!S.prompt) return;
   const old = S.prompt; setPrompt('');
-  toast('已清空（点这里 3 秒内可撤销）', 3000);
-  $('toast').style.pointerEvents = 'auto';
-  $('toast').onclick = () => { setPrompt(old); toast('已恢复'); };
-  setTimeout(() => { $('toast').style.pointerEvents = 'none'; $('toast').onclick = null; }, 3000);
+  toast('已清空，点这里撤销', 3500, () => { setPrompt(old); toast('已恢复'); });
 };
 
 /* ---- 花费 ---- */
-async function updateEstimate(){
-  const m = MODELS[S.model]; const refs = (await selectedRefs()).length;
-  const est = S.count * (m.price + refs * m.refPrice);
-  $('go').textContent = `生成 ${S.count} 张 · 约 $${est.toFixed(3)}`;
+function updateEstimate(){
+  const m = MODELS[S.model]; const n = selectedRefIds().length;
+  $('goEst').textContent = `${S.count} 张，约 $${(S.count * (m.price + n * m.refPrice)).toFixed(3)}`;
 }
-function addCost(c){ if (!(c > 0)) return; const t = (parseFloat(localStorage.getItem('sd2_cost')) || 0) + c; localStorage.setItem('sd2_cost', String(t)); showCost(); }
+function addCost(c){ if (!(c > 0)) return; localStorage.setItem('sd2_cost', String((parseFloat(localStorage.getItem('sd2_cost')) || 0) + c)); showCost(); }
 function showCost(){ $('totalCost').textContent = '$' + (parseFloat(localStorage.getItem('sd2_cost')) || 0).toFixed(3); }
-$('totalCost').onclick = () => { if (confirm('把累计花费清零？')) { localStorage.setItem('sd2_cost', '0'); showCost(); } };
+$('ledger').onclick = () => { if (confirm('把累计花费清零？')) { localStorage.setItem('sd2_cost', '0'); showCost(); } };
 
 /* ---- API Key ---- */
 $('apiKey').value = getKey();
-$('keyShow').onclick = () => { const i = $('apiKey'); const show = i.type === 'password'; i.type = show ? 'text' : 'password'; $('keyShow').textContent = show ? '隐藏' : '显示'; };
+if (!getKey()) $('setup').open = true;
+$('keyShow').onclick = () => { const i = $('apiKey'), show = i.type === 'password'; i.type = show ? 'text' : 'password'; $('keyShow').textContent = show ? '隐藏' : '显示'; };
 $('keyDel').onclick = () => { if (!confirm('从这台手机删除 Key？')) return; localStorage.removeItem('sd2_key'); $('apiKey').value = ''; $('keyStatus').textContent = 'Key 已删除。'; };
 $('keyCheck').onclick = async () => {
   const k = $('apiKey').value.trim(); if (!k) return toast('先粘贴 Key');
@@ -336,26 +439,27 @@ $('keyCheck').onclick = async () => {
     const j = await r.json().catch(() => ({}));
     if (!r.ok) throw new Error(j?.error?.message || ('HTTP ' + r.status));
     const d = j.data || {};
-    const usage = d.usage != null ? `已用 $${Number(d.usage).toFixed(3)}` : '';
-    const limit = d.limit != null ? ` · 上限 $${d.limit}` + (d.limit_remaining != null ? `（剩 $${Number(d.limit_remaining).toFixed(3)}）` : '') : ' · 未设上限';
-    $('keyStatus').textContent = `✅ Key 可用。${usage}${limit}`;
-  } catch (e) { $('keyStatus').textContent = '❌ 检查失败：' + e.message + '（Key 已保存，可直接试生成）'; }
+    const usage = d.usage != null ? `已用 $${Number(d.usage).toFixed(3)}，` : '';
+    const limit = d.limit != null ? `上限 $${d.limit}` + (d.limit_remaining != null ? `，还剩 $${Number(d.limit_remaining).toFixed(3)}` : '') : '没设上限';
+    $('keyStatus').textContent = `Key 可用。${usage}${limit}。`;
+  } catch (e) { $('keyStatus').textContent = '检查没通过：' + e.message + '。Key 已保存，可以直接试着显影。'; }
 };
 
 /* ---- 中转站 ---- */
 const getRelay = () => (localStorage.getItem('sd2_relay') || '').trim().replace(/\/+$/, '');
 $('relayUrl').value = getRelay();
 $('relayUrl').addEventListener('change', e => { localStorage.setItem('sd2_relay', e.target.value.trim().replace(/\/+$/, '')); relayInfo(); });
-function relayInfo(){ if (getRelay()) $('relayStatus').textContent = '已启用中转：发出去就可以离开，回来自动取图。'; }
+function relayInfo(){
+  $('setupSum').textContent = getRelay() ? '中转站已开启' : 'Key、中转站、存储';
+  if (getRelay()) $('relayStatus').textContent = '中转站已开启：发出去就可以离开，回来自动取回。';
+}
 $('relayTest').onclick = async () => {
-  const u = $('relayUrl').value.trim().replace(/\/+$/, '');
-  localStorage.setItem('sd2_relay', u);
-  if (!u) { $('relayStatus').textContent = '已关闭中转，改回直连。'; return; }
+  const u = $('relayUrl').value.trim().replace(/\/+$/, ''); localStorage.setItem('sd2_relay', u); relayInfo();
+  if (!u) { $('relayStatus').textContent = '中转站已关闭，改回直连。'; return; }
   $('relayStatus').textContent = '测试中…';
-  try {
-    const j = await (await fetch(u + '/')).json();
-    $('relayStatus').textContent = j.ok ? '✅ 中转站连通，已启用。发出去就可以离开，回来自动取图。' : '❌ 地址能打开，但不是中转站';
-  } catch (e) { $('relayStatus').textContent = '❌ 连不上：' + e.message + '（检查地址是不是 https://….workers.dev）'; }
+  try { const j = await (await fetch(u + '/')).json();
+    $('relayStatus').textContent = j.ok ? '中转站连通，已开启。发出去就可以离开，回来自动取回。' : '这个地址能打开，但不是中转站。';
+  } catch (e) { $('relayStatus').textContent = '连不上：' + e.message + '。检查地址是不是 https://….workers.dev'; }
 };
 relayInfo();
 
@@ -363,20 +467,27 @@ relayInfo();
 async function storageInfo(){
   try {
     const p = await navigator.storage?.persisted?.();
-    $('persistBtn').textContent = p ? '✅ 已防止系统清理' : '防止被系统清理';
+    $('persistBtn').textContent = p ? '已防止系统清理' : '防止被系统清理';
     const est = await navigator.storage?.estimate?.();
-    if (est) $('storageHint').textContent = `本机已用约 ${(est.usage / 1048576).toFixed(0)} MB。建议把网页“添加到主屏幕”使用，存的东西更不容易被清掉。`;
+    if (est) $('storageHint').textContent = `这台手机上已存约 ${(est.usage / 1048576).toFixed(0)} MB。`;
   } catch {}
 }
 $('persistBtn').onclick = async () => {
-  try { const ok = await navigator.storage?.persist?.(); toast(ok ? '已开启' : '浏览器没同意；添加到主屏幕后再试'); } catch { toast('这个浏览器不支持'); }
+  try { const ok = await navigator.storage?.persist?.(); toast(ok ? '已开启' : '浏览器没有同意，从主屏幕图标打开后再试'); } catch { toast('这个浏览器不支持'); }
   storageInfo();
 };
 
-/* ================== 参考图（持久保存） ================== */
+/* ================== 参考图 ==================
+   选中状态只存在设置里（一串 id），点一下立刻生效，不再去重写整张图片。 */
 const urlCache = new Map();
 const urlFor = (id, blob) => { if (!urlCache.has(id)) urlCache.set(id, URL.createObjectURL(blob)); return urlCache.get(id); };
 const dropUrl = id => { if (urlCache.has(id)){ URL.revokeObjectURL(urlCache.get(id)); urlCache.delete(id); } };
+let REFS = (await dbAll('refs')).sort((a, b) => a.created - b.created);
+if (!Array.isArray(S.refSel)) {            // 从旧版迁移选择状态
+  S.refSel = REFS.filter(r => r.sel).sort((a, b) => a.sel - b.sel).map(r => r.id); saveS();
+}
+const selectedRefIds = () => S.refSel.filter(id => REFS.some(r => r.id === id));
+const selectedRefs = () => selectedRefIds().map(id => REFS.find(r => r.id === id));
 
 async function shrink(file){
   const MAX = 2560;
@@ -385,44 +496,54 @@ async function shrink(file){
   if (scale === 1 && file.size < 4e6 && /jpeg|png|webp/.test(file.type)){ bmp.close?.(); return file; }
   const c = document.createElement('canvas'); c.width = Math.round(bmp.width * scale); c.height = Math.round(bmp.height * scale);
   c.getContext('2d').drawImage(bmp, 0, 0, c.width, c.height); bmp.close?.();
-  const png = file.type === 'image/png';
-  return await new Promise(r => c.toBlob(b => r(b || file), png ? 'image/png' : 'image/jpeg', 0.92));
+  return await new Promise(r => c.toBlob(b => r(b || file), file.type === 'image/png' ? 'image/png' : 'image/jpeg', 0.92));
 }
-async function addRefBlob(blob, name){ await dbPut('refs', { id: uid(), blob, name: name || 'ref', created: Date.now(), sel: Date.now() + Math.random() }); }
+async function addRefBlob(blob, name){
+  const rec = { id: uid(), blob, name: name || 'ref', created: Date.now() };
+  await dbPut('refs', rec); REFS.push(rec);
+  S.refSel = [...selectedRefIds(), rec.id]; saveS();
+}
 $('refFile').onchange = async e => {
   const files = [...e.target.files]; e.target.value = '';
   for (const f of files) await addRefBlob(await shrink(f), f.name);
-  toast(`已保存 ${files.length} 张参考图`); renderRefs();
+  toast(`已存好 ${files.length} 张参考图`); renderRefs();
 };
-async function selectedRefs(){ return (await dbAll('refs')).filter(r => r.sel).sort((a, b) => a.sel - b.sel); }
-async function renderRefs(){
-  const refs = (await dbAll('refs')).sort((a, b) => a.created - b.created);
-  const sel = refs.filter(r => r.sel).sort((a, b) => a.sel - b.sel).map(r => r.id);
-  const max = MODELS[S.model].maxRefs;
-  $('refCount').textContent = `已选 ${sel.length}/${max}`;
-  $('refCount').style.color = sel.length > max ? 'var(--err)' : '';
+function renderRefs(){
+  const sel = selectedRefIds(); const max = MODELS[S.model].maxRefs;
+  $('refCount').textContent = `已选 ${sel.length} / ${max}`;
+  $('refCount').style.color = sel.length > max ? 'var(--stop)' : '';
+  $('refAll').textContent = sel.length ? '全不选' : '全选';
+  $('refAll').hidden = !REFS.length;
   const box = $('refs'); box.innerHTML = '';
-  for (const r of refs){
-    const d = document.createElement('div'); const idx = sel.indexOf(r.id);
-    d.className = 'ref' + (idx >= 0 ? ' sel' : '');
-    d.innerHTML = `<img src="${urlFor(r.id, r.blob)}" alt="">${idx >= 0 ? `<span class="badge">图${idx + 1}</span>` : ''}<button class="del">×</button>`;
+  for (const r of REFS){
+    const idx = sel.indexOf(r.id);
+    const d = document.createElement('div'); d.className = 'neg' + (idx >= 0 ? ' on' : ''); d.setAttribute('role', 'button');
+    d.innerHTML = `<img src="${urlFor(r.id, r.blob)}" alt="参考图">${idx >= 0 ? `<span class="no">图${idx + 1}</span>` : ''}<button class="x" aria-label="删除">×</button>`;
     d.onclick = async ev => {
-      if (ev.target.classList.contains('del')){
+      if (ev.target.classList.contains('x')){
         if (!confirm('删除这张参考图？')) return;
-        await dbDel('refs', r.id); dropUrl(r.id); return renderRefs();
+        await dbDel('refs', r.id); dropUrl(r.id); REFS = REFS.filter(x => x.id !== r.id);
+        S.refSel = selectedRefIds(); saveS(); return renderRefs();
       }
-      r.sel = r.sel ? 0 : Date.now(); await dbPut('refs', r); renderRefs();
+      const cur = selectedRefIds();
+      S.refSel = cur.includes(r.id) ? cur.filter(x => x !== r.id) : [...cur, r.id];
+      saveS(); renderRefs();
     };
     box.appendChild(d);
   }
-  const add = document.createElement('div'); add.className = 'ref add'; add.textContent = '+';
+  const add = document.createElement('button'); add.className = 'neg add'; add.innerHTML = '<b>+</b>添加';
   add.onclick = () => $('refFile').click(); box.appendChild(add);
   updateEstimate();
 }
-$('refNone').onclick = async () => { for (const r of await dbAll('refs')) if (r.sel){ r.sel = 0; await dbPut('refs', r); } renderRefs(); };
+$('refAll').onclick = () => {
+  const max = MODELS[S.model].maxRefs;
+  S.refSel = selectedRefIds().length ? [] : REFS.slice(0, max).map(r => r.id);
+  if (S.refSel.length && REFS.length > max) toast(`这个模型最多 ${max} 张，已选前 ${max} 张`);
+  saveS(); renderRefs();
+};
 
-/* ================== 任务：N 张同时发出 ================== */
-const active = new Map();   // taskId -> { ctrl, start, hidden, reason, task }
+/* ================== 任务 ================== */
+const active = new Map();   // taskId -> { ctrl, start, hidden, reason, task, relay, state, polls }
 let hiddenAt = 0, pumping = false;
 
 async function enqueue({ model, prompt, params, refIds, n }){
@@ -433,17 +554,17 @@ async function enqueue({ model, prompt, params, refIds, n }){
   }
   pump();
 }
-
 $('go').onclick = async () => {
-  if (!getKey()){ $('apiKey').focus(); return toast('先在下面填 API Key'); }
-  const prompt = $('prompt').value.trim(); if (!prompt) return toast('提示词是空的');
-  const m = MODELS[S.model]; const refs = await selectedRefs();
-  if (refs.length > m.maxRefs) return toast(`这个模型最多 ${m.maxRefs} 张参考图，你选了 ${refs.length} 张`);
+  if (!getKey()){ $('setup').open = true; $('apiKey').scrollIntoView({ behavior: 'smooth', block: 'center' }); return toast('先在暗房设置里填 API Key'); }
+  const prompt = $('prompt').value.trim(); if (!prompt){ $('prompt').focus(); return toast('先写下想要的画面'); }
+  const m = MODELS[S.model]; const refs = selectedRefIds();
+  if (refs.length > m.maxRefs) return toast(`这个模型最多 ${m.maxRefs} 张参考图，现在选了 ${refs.length} 张`);
   const locked = S.seed !== '' && Number.isFinite(parseInt(S.seed));
-  await enqueue({ model: S.model, prompt, refIds: refs.map(r => r.id), n: S.count,
+  await enqueue({ model: S.model, prompt, refIds: refs, n: +S.count,
     params: { aspect_ratio: S.aspect, resolution: S.resolution, output_format: m.fmt ? S.format : null,
               background: m.bg ? S.background : null, seed: locked ? parseInt(S.seed) : null, seedLocked: locked } });
-  toast(`${S.count} 张已同时发出`);
+  toast(`开始显影 ${S.count} 张`);
+  $('gallery').scrollIntoView({ behavior: 'smooth', block: 'start' });
 };
 
 async function buildBody(t){
@@ -456,12 +577,17 @@ async function buildBody(t){
   if (t.refIds.length){
     body.input_references = [];
     for (const id of t.refIds){
-      const r = await dbGet('refs', id);
-      if (!r) throw new ApiError('有一张参考图已被删除，这个任务没法重发', 0);
+      const r = REFS.find(x => x.id === id) || await dbGet('refs', id);
+      if (!r) throw new ApiError('有一张参考图已被删除，这一张没法再显影', 0);
       body.input_references.push({ type: 'image_url', image_url: { url: await blobToDataURL(r.blob) } });
     }
   }
   return body;
+}
+async function fetchT(url, opts, ms, rec){
+  const timer = setTimeout(() => { rec.reason = rec.reason || '等待超时'; rec.ctrl.abort(); }, ms);
+  try { return await fetch(url, { ...opts, signal: rec.ctrl.signal }); }
+  finally { clearTimeout(timer); }
 }
 
 async function pump(){
@@ -470,30 +596,20 @@ async function pump(){
   try {
     do {
       pump.again = false;
-      // queued = 待发出；submitted = 已交给中转站，只需去取结果（不限并发、不会重发）
       const queued = (await dbAll('tasks')).filter(t => t.status === 'queued' || t.status === 'submitted').sort((a, b) => a.created - b.created);
       for (const t of queued){
         if (t.status === 'queued' && active.size >= MAX_PARALLEL) continue;
         if (t.status === 'submitted' && document.hidden) continue;
         if (active.has(t.id)) continue;
-        runTask(t);                         // 不 await：全部同时发出
+        runTask(t);                         // 不 await：同时发出
       }
     } while (pump.again);
   } finally { pumping = false; }
   renderTasks(); renderGallery(); updateWake();
 }
 
-const sleep = ms => new Promise(r => setTimeout(r, ms));
-// 带超时的 fetch；rec.ctrl 也能从外面中止
-async function fetchT(url, opts, ms, rec){
-  const timer = setTimeout(() => { rec.reason = rec.reason || '等待超时'; rec.ctrl.abort(); }, ms);
-  try { return await fetch(url, { ...opts, signal: rec.ctrl.signal }); }
-  finally { clearTimeout(timer); }
-}
-const RELAY_GIVEUP = 20 * 60 * 1000;   // 中转任务 20 分钟还没结果就判失败
-
 async function runTask(t){
-  const rec = { ctrl: new AbortController(), start: t.submittedAt || Date.now(), hidden: document.hidden, reason: '', task: t, relay: false, parked: false };
+  const rec = { ctrl: new AbortController(), start: t.submittedAt || Date.now(), hidden: document.hidden, reason: '', task: t, relay: false, parked: false, state: '', polls: 0 };
   active.set(t.id, rec);
   if (t.status !== 'submitted'){ t.status = 'running'; t.attempts = (t.attempts || 0) + 1; }
   t.error = '';
@@ -505,36 +621,34 @@ async function runTask(t){
     const relay = t.jobId ? (t.relay || getRelay()) : getRelay();
     if (relay){
       rec.relay = true;
-      /* ---------- 中转模式：提交一次，之后只轮询取结果 ---------- */
       if (!t.jobId){
+        rec.state = '正在交给中转站';
         const bodyStr = JSON.stringify(await buildBody(t));
         if (bodyStr.length > 24e6) throw new ApiError('参考图太大了（超过 24MB），少选几张再试', 0);
         const r = await fetchT(relay + '/jobs', { method: 'POST',
           headers: { 'Authorization': 'Bearer ' + getKey(), 'Content-Type': 'application/json' }, body: bodyStr }, 90000, rec);
         const j = await r.json().catch(() => ({}));
-        if (!r.ok || !j.id) throw new ApiError(j?.error?.message || ('中转站提交失败 HTTP ' + r.status), r.status);
+        if (!r.ok || !j.id) throw new ApiError(j?.error?.message || ('中转站没接收 [HTTP ' + r.status + ']'), r.status);
         t.jobId = j.id; t.relay = relay; t.status = 'submitted'; t.submittedAt = rec.start = Date.now(); rec.state = '已交给中转站';
         await dbPut('tasks', t);
       }
       for (;;){
-        if (document.hidden){ rec.parked = true; return; }          // 切走了：先停，回来接着取
-        if (Date.now() - t.submittedAt > RELAY_GIVEUP) throw new ApiError('中转站 20 分钟没出结果，判定失败', 0);
+        if (document.hidden){ rec.parked = true; return; }
+        if (Date.now() - t.submittedAt > RELAY_GIVEUP) throw new ApiError('中转站 20 分钟没出结果', 0);
         let r;
         try { r = await fetchT(t.relay + '/jobs/' + t.jobId, {}, 30000, rec); }
-        catch (err) { rec.state = '查询中转站失败，3 秒后重试（' + (err.message || err) + '）'; rec.polls = (rec.polls || 0) + 1;
+        catch (err) { rec.polls++; rec.state = '连不上中转站，稍后再试';
                       rec.ctrl = new AbortController(); rec.reason = ''; await sleep(3000); continue; }
-        rec.polls = (rec.polls || 0) + 1;
+        rec.polls++;
         if (r.status === 202){
           const j = await r.json().catch(() => ({}));
-          const map = { queued:'中转站排队中', running:'OpenRouter 出图中', complete:'中转站已出图，等结果同步', waiting:'中转站等待中' };
-          rec.state = map[j.state] || ('中转站状态：' + (j.state || '未知'));
+          rec.state = ({ queued:'中转站排队中', running:'正在出图', complete:'已出图，等待同步', waiting:'中转站等待中' })[j.state] || ('中转站：' + (j.state || '未知'));
           await sleep(3000); continue;
         }
-        rec.state = '正在取回图片（HTTP ' + r.status + '）';
-        resp = r; text = await r.text(); break;
+        rec.state = '正在取回'; resp = r; text = await r.text(); break;
       }
     } else {
-      /* ---------- 直连模式 ---------- */
+      rec.state = '正在出图';
       const body = await buildBody(t);
       resp = await fetchT(API, { method: 'POST',
         headers: { 'Authorization': 'Bearer ' + getKey(), 'Content-Type': 'application/json',
@@ -544,8 +658,8 @@ async function runTask(t){
     }
     let json = null; try { json = JSON.parse(text); } catch {}
     if (!resp.ok || json?.error){
-      const raw = json?.error?.metadata?.raw ? ' · ' + String(json.error.metadata.raw).slice(0, 200) : '';
-      throw new ApiError(`[HTTP ${resp.status}] ` + (json?.error?.message || (text || '').slice(0, 300) || '无内容') + raw, resp.status);
+      const raw = json?.error?.metadata?.raw ? '（' + String(json.error.metadata.raw).slice(0, 200) + '）' : '';
+      throw new ApiError((json?.error?.message || (text || '').slice(0, 300) || '没有返回内容') + raw + ` [HTTP ${resp.status}]`, resp.status);
     }
     const items = json?.data || [];
     if (!items.length) throw new ApiError('接口没返回图片：' + (text || '').slice(0, 200), resp.status);
@@ -564,14 +678,14 @@ async function runTask(t){
   } catch (e) {
     const cur = await dbGet('tasks', t.id);
     if (cur && cur.jobId && !(e instanceof ApiError)){
-      rec.parked = true;                       // 已交给中转站：网络抖动不算失败，稍后继续取
+      rec.parked = true;
     } else if (cur){
-      if (cur.jobId){ delete cur.jobId; delete cur.relay; delete cur.submittedAt; }   // 失败后重发要重新提交
+      if (cur.jobId){ delete cur.jobId; delete cur.relay; delete cur.submittedAt; }
       if (e instanceof ApiError){
         cur.status = 'failed';
-        cur.error = (e.status === 429 || e.status >= 500) ? `${e.message}（服务端繁忙，可重发）` : e.message;
+        cur.error = (e.status === 429 || e.status >= 500) ? `${e.message}。服务端繁忙，可以重新显影。` : e.message;
       } else if (rec.hidden || rec.reason){
-        cur.status = 'interrupted'; cur.error = rec.reason || '连接被中断（页面切到后台了）';
+        cur.status = 'interrupted'; cur.error = rec.reason || '连接被打断（页面切到了后台）';
       } else {
         cur.status = 'failed'; cur.error = '网络错误：' + (e.message || e);
       }
@@ -586,7 +700,6 @@ async function runTask(t){
     } else renderGallery();
   }
 }
-
 async function requeueInterrupted(){
   if (!S.autoRetry) return;
   for (const t of await dbAll('tasks'))
@@ -596,11 +709,11 @@ async function requeueInterrupted(){
 async function renderTasks(){
   const tasks = (await dbAll('tasks')).filter(t => t.status === 'failed' || t.status === 'interrupted').sort((a, b) => a.created - b.created);
   $('taskCard').hidden = !tasks.length;
-  $('tasks').innerHTML = tasks.map(t => `<div class="t s-${t.status}"><span class="dot"></span>
-      <span class="msg"><b>${t.status === 'failed' ? '失败' : '已中断'}</b> · ${esc(t.error || '')}</span>
-      <button class="small" data-retry="${t.id}">重发</button><button class="small danger" data-del="${t.id}">删</button></div>`).join('');
+  $('tasks').innerHTML = tasks.map(t => `<div class="f"><p class="${t.status === 'failed' ? '' : 'wait'}"><b>${t.status === 'failed' ? '没出来' : '被打断'}</b>${esc(t.error || '')}</p>
+      <button class="quiet" data-retry="${t.id}">重新显影</button><button class="quiet" data-del="${t.id}">删</button></div>`).join('');
   const n = active.size;
-  document.title = n ? `⏳${n} 种梦` : '种梦 Seedream';
+  document.title = n ? `显影中 ${n} · 显影` : '显影';
+  $('busy').textContent = n ? `${n} 张显影中` : '';
 }
 $('tasks').onclick = async e => {
   const r = e.target.dataset.retry, d = e.target.dataset.del;
@@ -620,15 +733,15 @@ $('clearTasks').onclick = async () => {
 function onHide(){ hiddenAt = Date.now(); for (const r of active.values()) r.hidden = true; }
 async function onShow(){
   const away = hiddenAt ? Date.now() - hiddenAt : 0; hiddenAt = 0;
-  for (const r of active.values())
-    if (!r.relay && away > 10000 && Date.now() - r.start > STALE_MS){ r.reason = '切后台太久，连接已丢，自动重发'; r.ctrl.abort(); }
-    else if (r.relay && r.hidden){ r.hidden = false; r.ctrl.abort(); }   // 中转任务：丢掉挂起的查询，立刻重新去取
+  for (const r of active.values()){
+    if (!r.relay && away > 10000 && Date.now() - r.start > STALE_MS){ r.reason = '切到后台太久，连接已断，自动重新显影'; r.ctrl.abort(); }
+    else if (r.relay && r.hidden){ r.hidden = false; r.ctrl.abort(); }
+  }
   await requeueInterrupted(); pump();
 }
 document.addEventListener('visibilitychange', () => document.hidden ? onHide() : onShow());
 window.addEventListener('pageshow', e => { if (e.persisted) onShow(); });
 
-/* ---- 屏幕常亮 ---- */
 let wake = null;
 async function updateWake(){
   try {
@@ -638,56 +751,69 @@ async function updateWake(){
   } catch {}
 }
 
-/* ================== 出过的图（含生成中的占位卡，能直接看到几张在同时跑） ================== */
+/* ================== 印样 ================== */
 let galKey = '';
+const seenImages = new Set();
+let firstGalleryRender = true;
 async function renderGallery(){
   const imgs = (await dbAll('images')).sort((a, b) => b.created - a.created);
   const running = [...active.values()].sort((a, b) => a.start - b.start);
-  $('galCount').textContent = `${imgs.length} 张` + (running.length ? ` · ${running.length} 张生成中` : '');
+  $('galCount').textContent = imgs.length ? `${imgs.length} 张` : '';
   $('galEmpty').hidden = imgs.length > 0 || running.length > 0;
+  $('zipAll').hidden = !imgs.length;
   const key = running.map(r => r.task.id).join(',') + '|' + imgs.map(i => i.id).join(',');
-  const g = $('gallery');
-  if (key !== galKey){
-    galKey = key; g.innerHTML = '';
-    for (const r of running){
-      const ph = document.createElement('div'); ph.className = 'ph'; ph.dataset.start = r.start; ph.dataset.id = r.task.id;
-      ph.innerHTML = `<b>0s</b><span>生成中</span>`; g.appendChild(ph);
-      ph.onclick = () => showTaskInfo(r.task.id);
-    }
-    for (const im of imgs){
-      const el = document.createElement('img'); el.loading = 'lazy'; el.src = urlFor(im.id, im.blob);
-      el.onclick = () => openViewer(im); g.appendChild(el);
-    }
+  if (key === galKey) return; galKey = key;
+  const g = $('gallery'); g.innerHTML = '';
+  for (const r of running){
+    const f = document.createElement('div'); f.className = 'frame';
+    f.innerHTML = `<div class="tray" data-id="${r.task.id}"><b>0s</b><span>显影中</span></div><div class="edge"><span>显影中</span><i></i></div>`;
+    f.onclick = () => showTaskInfo(r.task.id); g.appendChild(f);
   }
+  const total = imgs.length;
+  imgs.forEach((im, i) => {
+    const f = document.createElement('div'); f.className = 'frame';
+    if (!firstGalleryRender && !seenImages.has(im.id)) f.classList.add('fresh');
+    seenImages.add(im.id);
+    const p = im.params || {};
+    f.innerHTML = `<img class="pic" loading="lazy" src="${urlFor(im.id, im.blob)}" alt=""><div class="edge"><span>${total - i}</span><i>${esc(p.aspect_ratio || '')}</i></div>`;
+    f.onclick = () => openViewer(im); g.appendChild(f);
+  });
+  firstGalleryRender = false;
 }
-setInterval(() => { for (const ph of document.querySelectorAll('.ph')){
-  const rec = active.get(ph.dataset.id); if (rec) ph.dataset.start = rec.start;
-  ph.firstChild.textContent = Math.round((Date.now() - ph.dataset.start) / 1000) + 's';
-  ph.lastChild.textContent = rec ? (rec.relay ? (rec.state || '提交中转站中') : '直连出图中') : '生成中';
+setInterval(() => { for (const tr of document.querySelectorAll('.tray')){
+  const rec = active.get(tr.dataset.id); if (!rec) continue;
+  tr.firstChild.textContent = Math.round((Date.now() - rec.start) / 1000) + 's';
+  tr.lastChild.textContent = rec.state || '显影中';
 } }, 1000);
-// 点占位卡：看任务卡在哪，并给出可以直接在浏览器打开的查询链接
 async function showTaskInfo(id){
-  const t = await dbGet('tasks', id); const rec = active.get(id);
-  if (!t) return;
+  const t = await dbGet('tasks', id); const rec = active.get(id); if (!t) return;
   const lines = [
-    '状态：' + (rec ? (rec.state || '进行中') : t.status),
-    '模式：' + (t.jobId ? '中转站' : '直连'),
-    '已查询次数：' + ((rec && rec.polls) || 0),
-    '已等待：' + Math.round((Date.now() - (t.submittedAt || t.created)) / 1000) + ' 秒',
+    '现在：' + (rec ? (rec.state || '进行中') : t.status),
+    '方式：' + (t.jobId ? '中转站' : '直连'),
+    '已等：' + Math.round((Date.now() - (t.submittedAt || t.created)) / 1000) + ' 秒',
+    '已查询：' + ((rec && rec.polls) || 0) + ' 次',
   ];
-  if (t.jobId){
-    const link = t.relay + '/jobs/' + t.jobId;
-    window.prompt(lines.join('\n') + '\n\n下面是查询链接，可复制到浏览器打开：', link);
-  } else alert(lines.join('\n'));
+  if (t.jobId) window.prompt(lines.join('\n') + '\n\n查询链接（可复制到浏览器打开）：', t.relay + '/jobs/' + t.jobId);
+  else alert(lines.join('\n'));
 }
 
-/* ---- 大图 + 操作 ---- */
+/* ---- 放大看 ---- */
 let vCur = null;
-const fileName = im => `seedream_${stamp(im.created)}.${extOf(im.mime)}`;
+const fileName = im => `xianying_${stamp(im.created)}.${extOf(im.mime)}`;
 function openViewer(im){
   vCur = im; $('vImg').src = urlFor(im.id, im.blob);
   const p = im.params || {};
-  $('vMeta').textContent = `${MODELS[im.model]?.label || im.model} · ${p.aspect_ratio} · ${p.resolution}${p.output_format ? ' · ' + p.output_format : ''}${p.background ? ' · 背景 ' + p.background : ''}\nseed ${Number.isFinite(p.seed) ? p.seed : '—'}${im.refIds?.length ? ' · 参考图 ' + im.refIds.length + ' 张' : ''}${im.cost != null ? ' · $' + im.cost : ''}${im.secs ? ' · ' + im.secs + 's' : ''} · ${new Date(im.created).toLocaleString()}\n\n${im.prompt}`;
+  $('vPrompt').textContent = im.prompt;
+  const items = [
+    MODELS[im.model]?.label || im.model,
+    p.aspect_ratio, p.resolution, p.output_format && p.output_format.toUpperCase(),
+    p.background && p.background !== 'auto' ? '背景' + ({opaque:'不透明',transparent:'透明'})[p.background] : '',
+    Number.isFinite(p.seed) ? `seed <b>${p.seed}</b>` : '',
+    im.refIds?.length ? `参考图 ${im.refIds.length} 张` : '',
+    im.cost != null ? `$${im.cost}` : '', im.secs ? `${im.secs} 秒` : '',
+    new Date(im.created).toLocaleString(),
+  ].filter(Boolean);
+  $('vMeta').innerHTML = items.map(x => `<dd>${x.includes('<b>') ? x : esc(x)}</dd>`).join('');
   $('viewer').classList.add('show');
 }
 const closeViewer = () => $('viewer').classList.remove('show');
@@ -697,51 +823,46 @@ $('vShare').onclick = async () => {
   if (navigator.canShare?.({ files: [f] })) { try { await navigator.share({ files: [f] }); } catch {} }
   else saveBlob(vCur.blob, fileName(vCur));
 };
-$('vRef').onclick = async () => { await addRefBlob(vCur.blob, 'from-gallery'); renderRefs(); toast('已加到参考图并选中'); };
-async function applyParams(im){
-  const p = im.params || {};
-  S.model = im.model; S.aspect = p.aspect_ratio || S.aspect; S.resolution = p.resolution || S.resolution;
-  if (p.output_format) S.format = p.output_format; if (p.background) S.background = p.background;
-  setPrompt(im.prompt);
-  let missing = 0;
-  const want = im.refIds || [];
-  for (const r of await dbAll('refs')){
-    const i = want.indexOf(r.id); r.sel = i >= 0 ? Date.now() + i : 0; await dbPut('refs', r);
-  }
-  for (const id of want) if (!(await dbGet('refs', id))) missing++;
-  refreshParamUI();
-  return missing;
-}
-$('vUse').onclick = async () => {
-  const miss = await applyParams(vCur); closeViewer(); window.scrollTo({ top: 0, behavior: 'smooth' });
-  toast(miss ? `已套用参数（有 ${miss} 张参考图已删掉）` : '已套用这组参数和参考图');
+$('vRef').onclick = async () => { await addRefBlob(vCur.blob, 'from-gallery'); renderRefs(); toast('已加进参考图并选中'); };
+$('vUse').onclick = () => {
+  const p = vCur.params || {};
+  S.model = vCur.model; S.aspect = p.aspect_ratio || S.aspect; S.resolution = p.resolution || S.resolution;
+  if (p.output_format) S.format = p.output_format;
+  if (p.background) S.background = p.background;
+  setPrompt(vCur.prompt);
+  const want = vCur.refIds || [];
+  S.refSel = want.filter(id => REFS.some(r => r.id === id));
+  const miss = want.length - S.refSel.length;
+  refreshParamUI(); closeViewer(); window.scrollTo({ top: 0, behavior: 'smooth' });
+  toast(miss ? `已套用配方，有 ${miss} 张参考图已经删了` : '已套用这组配方和参考图');
 };
 $('vLock').onclick = () => {
-  const s = vCur.params?.seed; if (!Number.isFinite(s)) return toast('这张没有记录 seed');
-  S.seed = String(s); refreshParamUI(); toast(`已锁定 seed ${s}`);
+  const s = vCur.params?.seed; if (!Number.isFinite(s)) return toast('这张没有记下 seed');
+  S.seed = String(s); $('seed').value = S.seed; saveS(); toast(`已锁定 seed ${s}`);
 };
 $('vAgain').onclick = async () => {
-  if (!getKey()) return toast('先填 API Key');
-  for (const id of vCur.refIds || []) if (!(await dbGet('refs', id))) return toast('原来的参考图被删了，没法再来');
+  if (!getKey()) return toast('先在暗房设置里填 API Key');
+  if ((vCur.refIds || []).some(id => !REFS.some(r => r.id === id))) return toast('原来的参考图被删了，没法再显影');
   await enqueue({ model: vCur.model, prompt: vCur.prompt, refIds: vCur.refIds || [], n: 1, params: { ...vCur.params } });
-  closeViewer(); toast('已再来一张');
+  closeViewer(); toast('开始显影 1 张');
 };
 $('vCopy').onclick = async () => {
-  try { await navigator.clipboard.writeText(vCur.prompt); toast('提示词已复制'); }
-  catch { const ta = document.createElement('textarea'); ta.value = vCur.prompt; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove(); toast('提示词已复制'); }
+  try { await navigator.clipboard.writeText(vCur.prompt); }
+  catch { const ta = document.createElement('textarea'); ta.value = vCur.prompt; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove(); }
+  toast('提示词已复制');
 };
 $('vDel').onclick = async () => {
-  if (!confirm('删除这张图？')) return;
+  if (!confirm('删除这张照片？')) return;
   await dbDel('images', vCur.id); dropUrl(vCur.id); closeViewer(); renderGallery(); storageInfo();
 };
 $('clearGal').onclick = async () => {
-  if (!confirm('清空全部历史图片？（建议先打包下载）')) return;
-  if (!confirm('真的清空？删除后无法恢复')) return;
+  if (!confirm('清空全部印样？建议先打包下载。')) return;
+  if (!confirm('真的清空？删除后无法恢复。')) return;
   for (const im of await dbAll('images')) dropUrl(im.id);
   await dbClear('images'); renderGallery(); storageInfo();
 };
 
-/* ---- 一键打包下载（不压缩 ZIP） ---- */
+/* ---- 全部打包下载（不压缩 ZIP） ---- */
 const CRC_T = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++){ let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
 function crc32(u8){ let c = 0xFFFFFFFF; for (let i = 0; i < u8.length; i++) c = CRC_T[(c ^ u8[i]) & 0xFF] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; }
 async function makeZip(files, onProgress){
@@ -775,27 +896,52 @@ async function makeZip(files, onProgress){
 }
 $('zipAll').onclick = async () => {
   const imgs = (await dbAll('images')).sort((a, b) => a.created - b.created);
-  if (!imgs.length) return toast('还没有图');
+  if (!imgs.length) return toast('还没有照片');
   const btn = $('zipAll'); btn.disabled = true;
   try {
     const used = new Set();
-    const files = imgs.map(im => { const base = `seedream_${stamp(im.created)}`; let k = 1, name;
+    const files = imgs.map(im => { const base = `xianying_${stamp(im.created)}`; let k = 1, name;
       do { name = `${base}${k > 1 ? '_' + k : ''}.${extOf(im.mime)}`; k++; } while (used.has(name)); used.add(name);
       return { name, blob: im.blob, time: im.created }; });
     const zip = await makeZip(files, (i, n) => btn.textContent = `打包中 ${i}/${n}`);
-    saveBlob(zip, `seedream_全部${imgs.length}张_${stamp(Date.now())}.zip`);
+    saveBlob(zip, `显影_${imgs.length}张_${stamp(Date.now())}.zip`);
     toast(`已打包 ${imgs.length} 张`);
-  } catch (e) { toast('打包失败：' + e.message, 4000); }
-  finally { btn.disabled = false; btn.textContent = '⬇️ 一键打包下载全部'; }
+  } catch (e) { toast('打包没成功：' + e.message, 4000); }
+  finally { btn.disabled = false; btn.textContent = '全部打包下载'; }
 };
+
+/* ================== 自动更新 ==================
+   主屏幕图标打开的网页有自己独立的缓存，不会自己刷新。
+   每次打开 / 切回来时，跳过缓存去拿一次最新的 index.html，版本号不同就自动刷新；
+   正在显影时先不刷，空闲了再刷。
+   ★ 以后每次改代码，都把下面的版本号改一下。 */
+const APP_VERSION = '2026-11-14-d';
+let updateReady = false, lastCheck = 0;
+async function checkUpdate(force){
+  if (!force && Date.now() - lastCheck < 60000) return;
+  lastCheck = Date.now();
+  try {
+    const r = await fetch(location.pathname, { cache: 'reload' });
+    const m = (await r.text()).match(/APP_VERSION = '([^']+)'/);
+    if (m && m[1] !== APP_VERSION){ updateReady = true; applyUpdate(); }
+  } catch {}
+}
+function applyUpdate(){
+  if (!updateReady) return;
+  if (active.size === 0) { location.reload(); return; }
+  toast('有新版本，这批显影完会自动更新', 3000);
+}
+document.addEventListener('visibilitychange', () => { if (!document.hidden) checkUpdate(); });
+setInterval(() => { if (updateReady) applyUpdate(); }, 5000);
 
 /* ================== 启动 ================== */
 for (const t of await dbAll('tasks'))
-  if (t.status === 'running'){ t.status = 'interrupted'; t.error = '上次关闭页面时还没返回'; await dbPut('tasks', t); }
+  if (t.status === 'running'){ t.status = 'interrupted'; t.error = '上次关掉页面时还没返回'; await dbPut('tasks', t); }
 setPrompt(S.prompt || '');
 refreshParamUI(); showCost(); storageInfo();
 await requeueInterrupted();
 pump();
+checkUpdate(true);
 })();
 </script>
 </body>

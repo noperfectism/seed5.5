@@ -323,7 +323,7 @@ const BGS = [['auto','自动'],['opaque','不透明'],['transparent','透明']];
 const DEFAULTS = { model:'bytedance-seed/seedream-5-5', aspect:'9:19.5', resolution:'2K', format:'png',
   background:'auto', seed:'', count:1, autoRetry:true, prompt:'' };
 const MAX_PARALLEL = 10, REQ_TIMEOUT = 240000, STALE_MS = 150000, MAX_AUTO = 4;
-const RELAY_GIVEUP = 20 * 60 * 1000;
+const RELAY_GIVEUP = 47 * 3600 * 1000;   // 中转站上的结果保留 2 天，这之内都还能取回
 
 /* ================== 小工具 ================== */
 const $ = id => document.getElementById(id);
@@ -584,6 +584,38 @@ async function buildBody(t){
   }
   return body;
 }
+// 分块下载中转站上的结果：3 块并行，每块最多重试 6 次
+async function downloadParts(t, rec, info){
+  const size = info.size, part = info.part || 524288;
+  if (!size) throw new ApiError('中转站上的结果是空的', 0);
+  const n = Math.ceil(size / part), chunks = new Array(n); let done = 0, next = 0;
+  rec.state = `正在取回 0/${n}`;
+  async function worker(){
+    while (next < n){
+      const i = next++;
+      for (let tries = 1; ; tries++){
+        if (document.hidden){ throw new Error('页面切到后台'); }
+        const sub = { ctrl: new AbortController(), reason: '' };
+        try {
+          const r = await fetchT(`${t.relay}/jobs/${t.jobId}/part/${i}`, {}, 45000, sub);
+          if (r.status === 404) throw new ApiError('中转站上的结果已过期（只保留 2 天）', 404);
+          if (!r.ok) throw new Error('HTTP ' + r.status);
+          chunks[i] = new Uint8Array(await r.arrayBuffer());
+          break;
+        } catch (e) {
+          if (e instanceof ApiError || tries >= 6) throw e;
+          rec.state = `取回第 ${i + 1} 块时断了，重试中`;
+          await sleep(1500 * tries);
+        }
+      }
+      done++; rec.state = `正在取回 ${done}/${n}`;
+    }
+  }
+  await Promise.all([worker(), worker(), worker()]);
+  const all = new Uint8Array(size); let off = 0;
+  for (const c of chunks){ all.set(c, off); off += c.length; }
+  return new TextDecoder().decode(all);
+}
 async function fetchT(url, opts, ms, rec){
   const timer = setTimeout(() => { rec.reason = rec.reason || '等待超时'; rec.ctrl.abort(); }, ms);
   try { return await fetch(url, { ...opts, signal: rec.ctrl.signal }); }
@@ -634,7 +666,7 @@ async function runTask(t){
       }
       for (;;){
         if (document.hidden){ rec.parked = true; return; }
-        if (Date.now() - t.submittedAt > RELAY_GIVEUP) throw new ApiError('中转站 20 分钟没出结果', 0);
+        if (Date.now() - t.submittedAt > RELAY_GIVEUP) throw new ApiError('超过 2 天没取回，中转站上的结果已过期', 0);
         let r;
         try { r = await fetchT(t.relay + '/jobs/' + t.jobId, {}, 30000, rec); }
         catch (err) { rec.polls++; rec.state = '连不上中转站，稍后再试';
@@ -642,10 +674,17 @@ async function runTask(t){
         rec.polls++;
         if (r.status === 202){
           const j = await r.json().catch(() => ({}));
-          rec.state = ({ queued:'中转站排队中', running:'正在出图', complete:'已出图，等待同步', waiting:'中转站等待中' })[j.state] || ('中转站：' + (j.state || '未知'));
+          rec.state = ({ queued:'中转站排队中', running:'正在出图', complete:'已出图，准备取回', syncing:'已出图，等待同步', waiting:'中转站等待中' })[j.state] || ('中转站：' + (j.state || '未知'));
           await sleep(3000); continue;
         }
-        rec.state = '正在取回'; resp = r; text = await r.text(); break;
+        const body = await r.text();
+        let info = null; try { info = JSON.parse(body); } catch {}
+        if (r.ok && info && info.done){
+          // 新版中转站：分块取回，哪块断了就只重下哪块
+          text = await downloadParts(t, rec, info);
+          resp = { ok: info.status < 400, status: info.status };
+        } else { resp = r; text = body; }        // 旧版中转站 / 出错：直接用返回内容
+        break;
       }
     } else {
       rec.state = '正在出图';
@@ -915,7 +954,7 @@ $('zipAll').onclick = async () => {
    每次打开 / 切回来时，跳过缓存去拿一次最新的 index.html，版本号不同就自动刷新；
    正在显影时先不刷，空闲了再刷。
    ★ 以后每次改代码，都把下面的版本号改一下。 */
-const APP_VERSION = '2026-11-14-d';
+const APP_VERSION = '2026-11-14-e';
 let updateReady = false, lastCheck = 0;
 async function checkUpdate(force){
   if (!force && Date.now() - lastCheck < 60000) return;

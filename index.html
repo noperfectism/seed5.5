@@ -513,7 +513,7 @@ async function runTask(t){
           headers: { 'Authorization': 'Bearer ' + getKey(), 'Content-Type': 'application/json' }, body: bodyStr }, 90000, rec);
         const j = await r.json().catch(() => ({}));
         if (!r.ok || !j.id) throw new ApiError(j?.error?.message || ('中转站提交失败 HTTP ' + r.status), r.status);
-        t.jobId = j.id; t.relay = relay; t.status = 'submitted'; t.submittedAt = rec.start = Date.now();
+        t.jobId = j.id; t.relay = relay; t.status = 'submitted'; t.submittedAt = rec.start = Date.now(); rec.state = '已交给中转站';
         await dbPut('tasks', t);
       }
       for (;;){
@@ -521,8 +521,16 @@ async function runTask(t){
         if (Date.now() - t.submittedAt > RELAY_GIVEUP) throw new ApiError('中转站 20 分钟没出结果，判定失败', 0);
         let r;
         try { r = await fetchT(t.relay + '/jobs/' + t.jobId, {}, 30000, rec); }
-        catch { if (rec.reason === 'stop') { rec.parked = true; return; } rec.ctrl = new AbortController(); rec.reason = ''; await sleep(3000); continue; }
-        if (r.status === 202){ await sleep(3000); continue; }
+        catch (err) { rec.state = '查询中转站失败，3 秒后重试（' + (err.message || err) + '）'; rec.polls = (rec.polls || 0) + 1;
+                      rec.ctrl = new AbortController(); rec.reason = ''; await sleep(3000); continue; }
+        rec.polls = (rec.polls || 0) + 1;
+        if (r.status === 202){
+          const j = await r.json().catch(() => ({}));
+          const map = { queued:'中转站排队中', running:'OpenRouter 出图中', complete:'中转站已出图，等结果同步', waiting:'中转站等待中' };
+          rec.state = map[j.state] || ('中转站状态：' + (j.state || '未知'));
+          await sleep(3000); continue;
+        }
+        rec.state = '正在取回图片（HTTP ' + r.status + '）';
         resp = r; text = await r.text(); break;
       }
     } else {
@@ -535,7 +543,10 @@ async function runTask(t){
       text = await resp.text();
     }
     let json = null; try { json = JSON.parse(text); } catch {}
-    if (!resp.ok || json?.error) throw new ApiError(json?.error?.message || (text || '').slice(0, 300) || ('HTTP ' + resp.status), resp.status);
+    if (!resp.ok || json?.error){
+      const raw = json?.error?.metadata?.raw ? ' · ' + String(json.error.metadata.raw).slice(0, 200) : '';
+      throw new ApiError(`[HTTP ${resp.status}] ` + (json?.error?.message || (text || '').slice(0, 300) || '无内容') + raw, resp.status);
+    }
     const items = json?.data || [];
     if (!items.length) throw new ApiError('接口没返回图片：' + (text || '').slice(0, 200), resp.status);
     const fallbackMime = t.params.output_format === 'jpeg' ? 'image/jpeg' : 'image/png';
@@ -639,8 +650,9 @@ async function renderGallery(){
   if (key !== galKey){
     galKey = key; g.innerHTML = '';
     for (const r of running){
-      const ph = document.createElement('div'); ph.className = 'ph'; ph.dataset.start = r.start;
+      const ph = document.createElement('div'); ph.className = 'ph'; ph.dataset.start = r.start; ph.dataset.id = r.task.id;
       ph.innerHTML = `<b>0s</b><span>生成中</span>`; g.appendChild(ph);
+      ph.onclick = () => showTaskInfo(r.task.id);
     }
     for (const im of imgs){
       const el = document.createElement('img'); el.loading = 'lazy'; el.src = urlFor(im.id, im.blob);
@@ -648,7 +660,26 @@ async function renderGallery(){
     }
   }
 }
-setInterval(() => { for (const ph of document.querySelectorAll('.ph')) ph.firstChild.textContent = Math.round((Date.now() - ph.dataset.start) / 1000) + 's'; }, 1000);
+setInterval(() => { for (const ph of document.querySelectorAll('.ph')){
+  const rec = active.get(ph.dataset.id); if (rec) ph.dataset.start = rec.start;
+  ph.firstChild.textContent = Math.round((Date.now() - ph.dataset.start) / 1000) + 's';
+  ph.lastChild.textContent = rec ? (rec.relay ? (rec.state || '提交中转站中') : '直连出图中') : '生成中';
+} }, 1000);
+// 点占位卡：看任务卡在哪，并给出可以直接在浏览器打开的查询链接
+async function showTaskInfo(id){
+  const t = await dbGet('tasks', id); const rec = active.get(id);
+  if (!t) return;
+  const lines = [
+    '状态：' + (rec ? (rec.state || '进行中') : t.status),
+    '模式：' + (t.jobId ? '中转站' : '直连'),
+    '已查询次数：' + ((rec && rec.polls) || 0),
+    '已等待：' + Math.round((Date.now() - (t.submittedAt || t.created)) / 1000) + ' 秒',
+  ];
+  if (t.jobId){
+    const link = t.relay + '/jobs/' + t.jobId;
+    window.prompt(lines.join('\n') + '\n\n下面是查询链接，可复制到浏览器打开：', link);
+  } else alert(lines.join('\n'));
+}
 
 /* ---- 大图 + 操作 ---- */
 let vCur = null;

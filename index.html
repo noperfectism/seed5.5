@@ -349,16 +349,28 @@ function stamp(t){ const d = new Date(t), p = n => String(n).padStart(2, '0');
   return `${d.getFullYear()}${p(d.getMonth()+1)}${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`; }
 const getKey = () => localStorage.getItem('sd2_key') || '';
 
-/* ================== IndexedDB ================== */
-const db = await new Promise((res, rej) => {
+/* ================== IndexedDB ==================
+   iPhone 上网页在后台放久了，数据库连接会被系统断掉（回来后读写报错）。
+   这里每次出错都自动重新连接再试一次。 */
+function openDB(){ return new Promise((res, rej) => {
   const r = indexedDB.open('seedream-studio', 1);
   r.onupgradeneeded = () => { for (const s of ['refs','images','tasks']) if (!r.result.objectStoreNames.contains(s)) r.result.createObjectStore(s, { keyPath:'id' }); };
-  r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
-});
-function store(name, mode, fn){ return new Promise((res, rej) => {
-  const tx = db.transaction(name, mode); let out; const r = fn(tx.objectStore(name)); if (r) r.onsuccess = () => out = r.result;
-  tx.oncomplete = () => res(out); tx.onerror = () => rej(tx.error); tx.onabort = () => rej(tx.error);
+  r.onsuccess = () => { const d = r.result; d.onclose = () => { if (db === d) db = null; }; d.onversionchange = () => d.close(); res(d); };
+  r.onerror = () => rej(r.error);
 }); }
+let db = await openDB();
+function storeOnce(d, name, mode, fn){ return new Promise((res, rej) => {
+  const tx = d.transaction(name, mode); let out; const r = fn(tx.objectStore(name)); if (r) r.onsuccess = () => out = r.result;
+  tx.oncomplete = () => res(out); tx.onerror = () => rej(tx.error); tx.onabort = () => rej(tx.error || new Error('事务被中止'));
+}); }
+async function store(name, mode, fn){
+  try { if (!db) db = await openDB(); return await storeOnce(db, name, mode, fn); }
+  catch (e) {
+    try { db && db.close(); } catch {}
+    db = await openDB();                      // 重新连接后再试一次
+    return await storeOnce(db, name, mode, fn);
+  }
+}
 const dbAll = n => store(n, 'readonly', s => s.getAll());
 const dbGet = (n, id) => store(n, 'readonly', s => s.get(id));
 const dbPut = (n, v) => store(n, 'readwrite', s => s.put(v));
@@ -584,18 +596,29 @@ async function buildBody(t){
   }
   return body;
 }
+// 被放弃的旧流程用这个信号退出，不再碰数据
+const DEAD = { dead: true };
+const alive = rec => { if (rec.dead) throw DEAD; rec.beat = Date.now(); };
+function killRec(id, rec){
+  rec.dead = true;
+  try { rec.ctrl.abort(); } catch {}
+  for (const c of rec.subs || []) try { c.abort(); } catch {}
+  if (active.get(id) === rec) active.delete(id);
+}
+
 // 分块下载中转站上的结果：3 块并行，每块最多重试 6 次
 async function downloadParts(t, rec, info){
   const size = info.size, part = info.part || 524288;
   if (!size) throw new ApiError('中转站上的结果是空的', 0);
   const n = Math.ceil(size / part), chunks = new Array(n); let done = 0, next = 0;
-  rec.state = `正在取回 0/${n}`;
+  rec.state = `正在取回 0/${n}`; rec.subs = new Set();
   async function worker(){
     while (next < n){
       const i = next++;
       for (let tries = 1; ; tries++){
-        if (document.hidden){ throw new Error('页面切到后台'); }
-        const sub = { ctrl: new AbortController(), reason: '' };
+        alive(rec);
+        if (document.hidden) throw new Error('页面切到后台');
+        const sub = { ctrl: new AbortController(), reason: '' }; rec.subs.add(sub.ctrl);
         try {
           const r = await fetchT(`${t.relay}/jobs/${t.jobId}/part/${i}`, {}, 45000, sub);
           if (r.status === 404) throw new ApiError('中转站上的结果已过期（只保留 2 天）', 404);
@@ -603,15 +626,17 @@ async function downloadParts(t, rec, info){
           chunks[i] = new Uint8Array(await r.arrayBuffer());
           break;
         } catch (e) {
+          if (e === DEAD || rec.dead) throw DEAD;
           if (e instanceof ApiError || tries >= 6) throw e;
           rec.state = `取回第 ${i + 1} 块时断了，重试中`;
           await sleep(1500 * tries);
-        }
+        } finally { rec.subs.delete(sub.ctrl); }
       }
-      done++; rec.state = `正在取回 ${done}/${n}`;
+      done++; rec.state = `正在取回 ${done}/${n}`; rec.beat = Date.now();
     }
   }
   await Promise.all([worker(), worker(), worker()]);
+  alive(rec);
   const all = new Uint8Array(size); let off = 0;
   for (const c of chunks){ all.set(c, off); off += c.length; }
   return new TextDecoder().decode(all);
@@ -636,19 +661,22 @@ async function pump(){
         runTask(t);                         // 不 await：同时发出
       }
     } while (pump.again);
+  } catch (e) {
+    setTimeout(pump, 2000);                 // 读数据库出错：2 秒后再来
   } finally { pumping = false; }
-  renderTasks(); renderGallery(); updateWake();
+  renderTasks().catch(() => {}); renderGallery().catch(() => {}); updateWake();
 }
 
 async function runTask(t){
-  const rec = { ctrl: new AbortController(), start: t.submittedAt || Date.now(), hidden: document.hidden, reason: '', task: t, relay: false, parked: false, state: '', polls: 0 };
+  const rec = { ctrl: new AbortController(), start: t.submittedAt || Date.now(), hidden: document.hidden, reason: '', task: t,
+                relay: false, parked: false, state: '', polls: 0, beat: Date.now(), dead: false };
   active.set(t.id, rec);
-  if (t.status !== 'submitted'){ t.status = 'running'; t.attempts = (t.attempts || 0) + 1; }
-  t.error = '';
-  await dbPut('tasks', t);
-  renderGallery();
   let ok = false;
   try {
+    if (t.status !== 'submitted'){ t.status = 'running'; t.attempts = (t.attempts || 0) + 1; }
+    t.error = '';
+    await dbPut('tasks', t);
+    renderGallery().catch(() => {});
     let resp, text;
     const relay = t.jobId ? (t.relay || getRelay()) : getRelay();
     if (relay){
@@ -665,13 +693,14 @@ async function runTask(t){
         await dbPut('tasks', t);
       }
       for (;;){
+        alive(rec);
         if (document.hidden){ rec.parked = true; return; }
         if (Date.now() - t.submittedAt > RELAY_GIVEUP) throw new ApiError('超过 2 天没取回，中转站上的结果已过期', 0);
         let r;
         try { r = await fetchT(t.relay + '/jobs/' + t.jobId, {}, 30000, rec); }
-        catch (err) { rec.polls++; rec.state = '连不上中转站（' + (err.message || err) + '），稍后再试'; rec.lastErr = String(err.message || err);
+        catch (err) { alive(rec); rec.polls++; rec.state = '连不上中转站（' + (err.message || err) + '），稍后再试'; rec.lastErr = String(err.message || err);
                       rec.ctrl = new AbortController(); rec.reason = ''; await sleep(3000); continue; }
-        rec.polls++;
+        alive(rec); rec.polls++;
         if (r.status >= 500 && r.status !== 502){
           const j = await r.json().catch(() => ({}));
           rec.state = '中转站出错：' + (j?.error?.message || ('HTTP ' + r.status)).slice(0, 120); await sleep(5000); continue;
@@ -684,10 +713,9 @@ async function runTask(t){
         const body = await r.text();
         let info = null; try { info = JSON.parse(body); } catch {}
         if (r.ok && info && info.done){
-          // 新版中转站：分块取回，哪块断了就只重下哪块
           text = await downloadParts(t, rec, info);
           resp = { ok: info.status < 400, status: info.status };
-        } else { resp = r; text = body; }        // 旧版中转站 / 出错：直接用返回内容
+        } else { resp = r; text = body; }
         break;
       }
     } else {
@@ -699,6 +727,7 @@ async function runTask(t){
         body: JSON.stringify(body) }, REQ_TIMEOUT, rec);
       text = await resp.text();
     }
+    alive(rec);
     let json = null; try { json = JSON.parse(text); } catch {}
     if (!resp.ok || json?.error){
       const raw = json?.error?.metadata?.raw ? '（' + String(json.error.metadata.raw).slice(0, 200) + '）' : '';
@@ -708,39 +737,46 @@ async function runTask(t){
     if (!items.length) throw new ApiError('接口没返回图片：' + (text || '').slice(0, 200), resp.status);
     const fallbackMime = t.params.output_format === 'jpeg' ? 'image/jpeg' : 'image/png';
     const cost = json.usage?.cost ?? null;
+    rec.state = '正在存进印样';
     for (const it of items){
       let blob;
       if (it.b64_json) blob = await b64ToBlob(it.b64_json, it.media_type || fallbackMime);
       else if (it.url) blob = await (await fetch(it.url)).blob();
       else continue;
-      await dbPut('images', { id: uid(), blob, mime: blob.type || fallbackMime, prompt: t.prompt, model: t.model,
+      alive(rec);
+      await dbPut('images', { id: 'img_' + t.id + '_' + items.indexOf(it), blob, mime: blob.type || fallbackMime, prompt: t.prompt, model: t.model,
         params: t.params, refIds: t.refIds, created: Date.now(), cost, secs: Math.round((Date.now() - rec.start) / 1000) });
     }
     addCost(cost);
     await dbDel('tasks', t.id); ok = true;
   } catch (e) {
-    const cur = await dbGet('tasks', t.id);
-    if (cur && cur.jobId && !(e instanceof ApiError)){
-      rec.parked = true;
-    } else if (cur){
-      if (cur.jobId){ delete cur.jobId; delete cur.relay; delete cur.submittedAt; }
-      if (e instanceof ApiError){
-        cur.status = 'failed';
-        cur.error = (e.status === 429 || e.status >= 500) ? `${e.message}。服务端繁忙，可以重新显影。` : e.message;
-      } else if (rec.hidden || rec.reason){
-        cur.status = 'interrupted'; cur.error = rec.reason || '连接被打断（页面切到了后台）';
-      } else {
-        cur.status = 'failed'; cur.error = '网络错误：' + (e.message || e);
+    if (e === DEAD || rec.dead) return;
+    try {
+      const cur = await dbGet('tasks', t.id);
+      if (cur && cur.jobId && !(e instanceof ApiError)){
+        rec.parked = true;                    // 已交给中转站：网络或存储出错都不算失败，稍后继续取
+      } else if (cur){
+        if (cur.jobId){ delete cur.jobId; delete cur.relay; delete cur.submittedAt; }
+        if (e instanceof ApiError){
+          cur.status = 'failed';
+          cur.error = (e.status === 429 || e.status >= 500) ? `${e.message}。服务端繁忙，可以重新显影。` : e.message;
+        } else if (rec.hidden || rec.reason){
+          cur.status = 'interrupted'; cur.error = rec.reason || '连接被打断（页面切到了后台）';
+        } else {
+          cur.status = 'failed'; cur.error = '网络错误：' + (e.message || e);
+        }
+        await dbPut('tasks', cur);
       }
-      await dbPut('tasks', cur);
-    }
+    } catch { rec.parked = true; }            // 连数据库都出错：当作稍后再试
   } finally {
-    active.delete(t.id);
-    if (ok && 'vibrate' in navigator) try { navigator.vibrate(30); } catch {}
-    if (!document.hidden){
-      await requeueInterrupted();
-      if (rec.parked && !ok) setTimeout(pump, 3000); else pump();
-    } else renderGallery();
+    if (!rec.dead){
+      if (active.get(t.id) === rec) active.delete(t.id);
+      if (ok && 'vibrate' in navigator) try { navigator.vibrate(30); } catch {}
+      if (!document.hidden){
+        try { await requeueInterrupted(); } catch {}
+        setTimeout(pump, rec.parked && !ok ? 3000 : 0);
+      } else renderGallery().catch(() => {});
+    }
   }
 }
 async function requeueInterrupted(){
@@ -772,18 +808,32 @@ $('clearTasks').onclick = async () => {
   renderTasks();
 };
 
-/* ---- 切后台 / 切回来 ---- */
+/* ---- 切后台 / 切回来 ----
+   回来时：中转站任务的旧流程一律丢掉，按任务号重新去中转站取（不会重新提交、不会重复扣费）。
+   另外每 10 秒巡查一次，哪个任务 60 秒没有动静，也同样丢掉重来。 */
 function onHide(){ hiddenAt = Date.now(); for (const r of active.values()) r.hidden = true; }
+let showing = false;
 async function onShow(){
-  const away = hiddenAt ? Date.now() - hiddenAt : 0; hiddenAt = 0;
-  for (const r of active.values()){
-    if (!r.relay && away > 10000 && Date.now() - r.start > STALE_MS){ r.reason = '切到后台太久，连接已断，自动重新显影'; r.ctrl.abort(); }
-    else if (r.relay && r.hidden){ r.hidden = false; r.ctrl.abort(); }
-  }
-  await requeueInterrupted(); pump();
+  if (showing) return; showing = true;
+  try {
+    const away = hiddenAt ? Date.now() - hiddenAt : 0; hiddenAt = 0;
+    for (const [id, r] of [...active]){
+      if (r.relay && r.task.jobId && (r.hidden || away > 0)) killRec(id, r);   // 只丢已交给中转站的（提交中的不动）
+      else if (!r.relay && away > 10000 && Date.now() - r.start > STALE_MS){ r.reason = '切到后台太久，连接已断，自动重新显影'; r.ctrl.abort(); }
+    }
+    try { await requeueInterrupted(); } catch {}
+    galKey = ''; pump();
+  } finally { showing = false; }
 }
 document.addEventListener('visibilitychange', () => document.hidden ? onHide() : onShow());
 window.addEventListener('pageshow', e => { if (e.persisted) onShow(); });
+window.addEventListener('focus', () => { if (!document.hidden) onShow(); });
+setInterval(() => {
+  if (document.hidden) return;
+  let killed = false;
+  for (const [id, r] of [...active]) if (r.relay && r.task.jobId && Date.now() - r.beat > 60000){ killRec(id, r); killed = true; }
+  if (killed){ galKey = ''; pump(); }
+}, 10000);
 
 let wake = null;
 async function updateWake(){
@@ -959,7 +1009,7 @@ $('zipAll').onclick = async () => {
    每次打开 / 切回来时，跳过缓存去拿一次最新的 index.html，版本号不同就自动刷新；
    正在显影时先不刷，空闲了再刷。
    ★ 以后每次改代码，都把下面的版本号改一下。 */
-const APP_VERSION = '2026-11-14-f';
+const APP_VERSION = '2026-11-15-a';
 let updateReady = false, lastCheck = 0;
 async function checkUpdate(force){
   if (!force && Date.now() - lastCheck < 60000) return;
@@ -986,6 +1036,7 @@ refreshParamUI(); showCost(); storageInfo();
 await requeueInterrupted();
 pump();
 checkUpdate(true);
+window.__xy = { breakDB: () => { try { db.close(); } catch {} } };   // 仅用于自测：模拟 iPhone 断开数据库
 })();
 </script>
 </body>
